@@ -1,0 +1,7 @@
+export const USER_ROLES = ['ADMIN', 'DEVELOPER', 'TESTER'];
+
+export const ISSUE_SEVERITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+
+export const ISSUE_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+
+export const ISSUE_STATUSES = ['OPEN', 'IN_PROGRESS', 'TESTING', 'RESOLVED', 'CLOSED'];
