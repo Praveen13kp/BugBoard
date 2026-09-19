@@ -6,11 +6,12 @@ import { apiListIssues } from '../api/issues';
 import { apiListUsers } from '../api/users';
 import { useAuth } from '../context/AuthContext';
 import { USER_ROLE_LABELS } from '../utils/format';
-import { canManageProjects } from '../utils/permissions';
+import { canManageProjects, canReportIssueForProject } from '../utils/permissions';
 import ErrorBox from '../components/common/ErrorBox';
 import EmptyState from '../components/common/EmptyState';
 import IssueRow from '../components/issues/IssueRow';
 import Loading from '../components/common/Loading';
+import SuccessBox from '../components/common/SuccessBox';
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams();
@@ -23,6 +24,7 @@ export default function ProjectDetailPage() {
   const [error, setError] = useState('');
   const [selectedUser, setSelectedUser] = useState('');
   const [actionError, setActionError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,10 +54,12 @@ export default function ProjectDetailPage() {
     event.preventDefault();
     if (!selectedUser) return;
     setActionError('');
+    setSuccessMessage('');
     try {
       const { project: nextProject } = await apiAddMembers(projectId, [selectedUser]);
       setProject(nextProject);
       setSelectedUser('');
+      setSuccessMessage('Member added.');
     } catch (addError) {
       setActionError(errorMessage(addError, 'Unable to add the member.'));
     }
@@ -63,9 +67,11 @@ export default function ProjectDetailPage() {
 
   async function handleRemoveMember(userId) {
     setActionError('');
+    setSuccessMessage('');
     try {
       const { project: nextProject } = await apiRemoveMember(projectId, userId);
       setProject(nextProject);
+      setSuccessMessage('Member removed.');
     } catch (removeError) {
       setActionError(errorMessage(removeError, 'Unable to remove the member.'));
     }
@@ -76,6 +82,7 @@ export default function ProjectDetailPage() {
 
   const memberIds = new Set(project.members.map((member) => member.id));
   const availableUsers = users.filter((candidate) => !memberIds.has(candidate.id));
+  const canReport = canReportIssueForProject(user, project);
 
   return (
     <div className="page">
@@ -86,6 +93,7 @@ export default function ProjectDetailPage() {
       </section>
 
       {actionError && <div className="alert alert--error">{actionError}</div>}
+      <SuccessBox message={successMessage} onDismiss={() => setSuccessMessage('')} />
 
       {isAdmin && (
         <section className="panel">
@@ -142,9 +150,11 @@ export default function ProjectDetailPage() {
       <section className="section">
         <div className="section-heading">
           <h3>Issues ({issues.length})</h3>
-          <Link className="link" to={`/create-issue?project=${projectId}`}>
-            Report an issue
-          </Link>
+          {canReport && (
+            <Link className="link" to={`/create-issue?project=${projectId}`}>
+              Report an issue
+            </Link>
+          )}
         </div>
         {issues.length === 0 ? (
           <EmptyState title="No issues in this project" message="Report the first bug for this project." />

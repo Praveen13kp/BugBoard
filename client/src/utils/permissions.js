@@ -2,6 +2,19 @@ export function canManageProjects(role) {
   return role === 'ADMIN';
 }
 
+export function canCreateProject(role) {
+  return role === 'ADMIN';
+}
+
+export function isUserMember(user, project) {
+  return (project?.members || []).some((member) => String(member?.id ?? '') === String(user.id));
+}
+
+export function canReportIssueForProject(user, project) {
+  if (user.role === 'ADMIN') return true;
+  return isUserMember(user, project);
+}
+
 export function canAssignIssue(role) {
   return role === 'ADMIN' || role === 'DEVELOPER';
 }

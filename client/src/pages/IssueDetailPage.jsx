@@ -12,6 +12,7 @@ import Badge from '../components/common/Badge';
 import EmptyState from '../components/common/EmptyState';
 import ErrorBox from '../components/common/ErrorBox';
 import Loading from '../components/common/Loading';
+import SuccessBox from '../components/common/SuccessBox';
 
 function personName(person) {
   return person?.name ?? 'Unassigned';
@@ -41,6 +42,7 @@ export default function IssueDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -74,10 +76,12 @@ export default function IssueDetailPage() {
 
   async function handleStatusChange(nextStatus) {
     setActionError('');
+    setSuccessMessage('');
     try {
       const result = await apiChangeStatus(issueId, nextStatus);
       updateIssue(result.issue);
       setActivity((await apiListActivity(issueId)).activity);
+      setSuccessMessage('Status updated.');
     } catch (statusError) {
       setActionError(errorMessage(statusError, 'Unable to change the status.'));
     }
@@ -85,10 +89,12 @@ export default function IssueDetailPage() {
 
   async function handleAssigneeChange(nextAssignee) {
     setActionError('');
+    setSuccessMessage('');
     try {
       const result = await apiChangeAssignee(issueId, nextAssignee || null);
       updateIssue(result.issue);
       setActivity((await apiListActivity(issueId)).activity);
+      setSuccessMessage('Assignee updated.');
     } catch (assignError) {
       setActionError(errorMessage(assignError, 'Unable to reassign the issue.'));
     }
@@ -120,6 +126,7 @@ export default function IssueDetailPage() {
       </section>
 
       {actionError && <div className="alert alert--error">{actionError}</div>}
+      <SuccessBox message={successMessage} onDismiss={() => setSuccessMessage('')} />
 
       <section className="panel detail-grid">
         <dl className="detail-list">
@@ -189,7 +196,10 @@ export default function IssueDetailPage() {
           <IssueEditForm
             issue={issue}
             canEdit={canEdit}
-            onSaved={({ issue: nextIssue }) => updateIssue(nextIssue)}
+            onSaved={({ issue: nextIssue }) => {
+              updateIssue(nextIssue);
+              setSuccessMessage('Issue details updated.');
+            }}
           />
         </div>
       </section>

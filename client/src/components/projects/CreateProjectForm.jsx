@@ -19,7 +19,7 @@ export default function CreateProjectForm({ onCreated }) {
       const { project } = await apiCreateProject({ name, key, description });
       setSubmitting(false);
       onCreated();
-      navigate(`/projects/${project.id}`);
+      navigate(`/projects/${project.id}`, { state: { success: 'Project created.' } });
     } catch (submitError) {
       setError(errorMessage(submitError, 'Unable to create the project.'));
       setSubmitting(false);
