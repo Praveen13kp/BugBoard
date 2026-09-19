@@ -15,8 +15,8 @@ The frontend is built next, followed by seed data and final documentation.
 
 ## Project Status and Remaining Work
 
-**Mandatory progress:** 13 of 20 mandatory implementation phases are complete.
-**Remaining:** 7 mandatory phases. Final UI-state and role-UI polish, seed data,
+**Mandatory progress:** 15 of 20 mandatory implementation phases are complete.
+**Remaining:** 5 mandatory phases. Error-handling middleware polish, seed data,
 and comprehensive documentation remain. The 8 bonus items remain deferred.
 
 ### Completed
@@ -59,6 +59,14 @@ and comprehensive documentation remain. The 8 bonus items remain deferred.
   cards and quick-filter links, project grid and project detail with member
   management, issue list with search and filters, an issue detail page with
   workflow/assignee/field actions, comments, and an activity timeline.
+- **Phase 14 — UI states:** Consistent loading, empty, error-and-retry, and
+  success-acknowledgement feedback across every API-driven screen, a
+  session-restore loading screen, and guest-route redirects so signed-in users
+  are taken away from `/login` and `/register`.
+- **Phase 15 — Frontend authorization:** Membership- and role-aware control
+  gating mirrored to server policy — project creation and member management are
+  administrator-only, report-issue actions appear only to members (or admins) of
+  a project, and issue workflow/assign/edit actions follow the role model.
 
 ### Mandatory implementation order
 
@@ -74,8 +82,8 @@ and comprehensive documentation remain. The 8 bonus items remain deferred.
 | 11 | Dashboard API | Access-scoped issue statistics and assigned-issue data | Complete — statistics and scoping tests |
 | 12 | Frontend foundation | React routes, authentication state, route protection, and endpoint modules | Complete — all pages routed, auth context, route guard, API modules |
 | 13 | Core UI | Responsive dashboard, projects, issues, issue detail, comments, and create/edit flows | Complete — production client build passes |
-| 14 | UI states | Loading, empty, error, retry, and success feedback for API-driven screens | In progress — shared components exist; final sweep pending |
-| 15 | Frontend authorization | Role-aware controls as UX, while retaining backend enforcement as the security boundary | Pending |
+| 14 | UI states | Loading, empty, error, retry, and success feedback for API-driven screens | Complete — shared states applied across all screens |
+| 15 | Frontend authorization | Role-aware controls as UX, while retaining backend enforcement as the security boundary | Complete — membership and role gating across screens |
 | 16 | Error handling | Complete centralized API error mapping and consistent response/error contracts | Pending |
 | 17 | Seed data | Demo users, projects, issues, comments, activities, and documented credentials | Pending |
 | 18 | Mandatory testing | Authentication, authorization, CRUD, workflow, filtering, comments, dashboard, and UI-state tests | In progress — 44 API tests passing |

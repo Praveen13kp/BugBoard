@@ -4,6 +4,9 @@ import { errorMessage } from '../api/error';
 import { apiCreateIssue } from '../api/issues';
 import { apiGetProject, apiListProjects } from '../api/projects';
 import { PRIORITY_LABELS, SEVERITY_LABELS } from '../utils/format';
+import { canReportIssueForProject } from '../utils/permissions';
+import EmptyState from '../components/common/EmptyState';
+import Loading from '../components/common/Loading';
 import { useAuth } from '../context/AuthContext';
 
 export default function CreateIssuePage() {
@@ -20,11 +23,21 @@ export default function CreateIssuePage() {
   const [assignee, setAssignee] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
     apiListProjects()
-      .then(({ projects: list }) => setProjects(list))
-      .catch(() => {});
+      .then(({ projects: list }) => {
+        if (active) setProjects(list);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -63,6 +76,34 @@ export default function CreateIssuePage() {
     }
   }
 
+  const reportableProjects =
+    user.role === 'ADMIN' ? projects : projects.filter((project) => canReportIssueForProject(user, project));
+
+  if (loading) {
+    return (
+      <div className="page">
+        <section className="page-heading">
+          <h2>Report an issue</h2>
+        </section>
+        <Loading text="Loading projects..." />
+      </div>
+    );
+  }
+
+  if (reportableProjects.length === 0) {
+    return (
+      <div className="page">
+        <section className="page-heading">
+          <h2>Report an issue</h2>
+        </section>
+        <EmptyState
+          title="No projects available"
+          message="You can only report issues in projects you belong to. Ask an administrator to add you as a member."
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="page">
       <section className="page-heading">
@@ -86,7 +127,7 @@ export default function CreateIssuePage() {
               }}
             >
               <option value="">Choose a project...</option>
-              {projects.map((project) => (
+              {reportableProjects.map((project) => (
                 <option key={project.id} value={project.id}>
                   {project.name} ({project.key})
                 </option>

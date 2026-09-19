@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { errorMessage } from '../api/error';
 import { apiListIssues } from '../api/issues';
+import { apiListProjects } from '../api/projects';
 import { apiListUsers } from '../api/users';
+import { useAuth } from '../context/AuthContext';
+import { canReportIssueForProject } from '../utils/permissions';
 import EmptyState from '../components/common/EmptyState';
 import ErrorBox from '../components/common/ErrorBox';
 import FilterBar from '../components/issues/FilterBar';
@@ -19,12 +22,29 @@ function filtersFromParams(params) {
 }
 
 export default function IssuesPage() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState(() => filtersFromParams(searchParams));
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [users, setUsers] = useState([]);
+  const [canReport, setCanReport] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    apiListProjects()
+      .then(({ projects: list }) => {
+        if (!active) return;
+        setCanReport(
+          user.role === 'ADMIN' || list.some((project) => canReportIssueForProject(user, project)),
+        );
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   useEffect(() => {
     let active = true;
@@ -82,9 +102,11 @@ export default function IssuesPage() {
           <h2>Issues</h2>
           <p className="muted">Search and filter across the issues you can access.</p>
         </div>
-        <Link to="/create-issue" className="btn btn--primary">
-          New issue
-        </Link>
+        {canReport && (
+          <Link to="/create-issue" className="btn btn--primary">
+            New issue
+          </Link>
+        )}
       </section>
 
       <FilterBar value={filters} onChange={setFilters} users={filterUsers} />
@@ -98,9 +120,11 @@ export default function IssuesPage() {
           title="No issues found"
           message="Try changing your filters, or create a new issue."
           children={
-            <Link to="/create-issue" className="btn btn--primary">
-              Create issue
-            </Link>
+            canReport ? (
+              <Link to="/create-issue" className="btn btn--primary">
+                Create issue
+              </Link>
+            ) : undefined
           }
         />
       ) : (

@@ -1,21 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { errorMessage } from '../api/error';
 import { apiListProjects } from '../api/projects';
 import { useAuth } from '../context/AuthContext';
-import { canManageProjects } from '../utils/permissions';
+import { canCreateProject } from '../utils/permissions';
 import CreateProjectForm from '../components/projects/CreateProjectForm';
 import EmptyState from '../components/common/EmptyState';
 import ErrorBox from '../components/common/ErrorBox';
 import Loading from '../components/common/Loading';
+import SuccessBox from '../components/common/SuccessBox';
 
 export default function ProjectsPage() {
   const { user } = useAuth();
+  const location = useLocation();
+  const [successMessage, setSuccessMessage] = useState(location.state?.success ?? '');
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const isAdmin = canManageProjects(user.role);
+  const isAdmin = canCreateProject(user.role);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,6 +52,8 @@ export default function ProjectsPage() {
       </section>
 
       {showCreate && isAdmin && <CreateProjectForm onCreated={load} />}
+
+      <SuccessBox message={successMessage} onDismiss={() => setSuccessMessage('')} />
 
       {error ? (
         <ErrorBox message={error} onRetry={load} />
