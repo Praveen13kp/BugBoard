@@ -15,9 +15,9 @@ The frontend is built next, followed by seed data and final documentation.
 
 ## Project Status and Remaining Work
 
-**Mandatory progress:** 8 of 20 mandatory implementation phases are complete.
-**Remaining:** 12 mandatory phases. Phase 9 is next; all later mandatory phases
-are pending. The 8 bonus items remain deferred.
+**Mandatory progress:** 11 of 20 mandatory implementation phases are complete.
+**Remaining:** 9 mandatory phases. The React frontend is next; all later
+mandatory phases are pending. The 8 bonus items remain deferred.
 
 ### Completed
 
@@ -42,6 +42,14 @@ are pending. The 8 bonus items remain deferred.
 - **Phase 8 — Search and filtering:** Server-side `search`, `project`, `status`,
   `priority`, `severity`, `reporter`, and `assignee` filters on `GET /api/issues`,
   scoped to projects the caller can access.
+- **Phase 9 — Comments:** Authorized comment listing and creation with author and
+  timestamp; comments are restricted to members of the issue's project.
+- **Phase 10 — Activity history:** An activity record is created for issue
+  creation, status/assignee/severity/priority changes, exposed through
+  `GET /api/issues/:issueId/activity` with access checks and author population.
+- **Phase 11 — Dashboard API:** Access-scoped statistics (total, open,
+  in-progress, testing, resolved, closed, critical, and issues assigned to the
+  caller) via `GET /api/dashboard`.
 
 ### Mandatory implementation order
 
@@ -52,16 +60,16 @@ are pending. The 8 bonus items remain deferred.
 | 6 | Issue management | Issue CRUD, assignment/reassignment, project and assignee validation | Complete — CRUD, assign, reassign, and validation tests |
 | 7 | Status workflow | Explicit transition map and activity creation for status changes | Complete — transition-map and invalid-transition tests |
 | 8 | Search and filtering | Server-side issue search and filters by project, status, priority, severity, reporter, and assignee | Complete — search and filter tests |
-| 9 | Comments | Authorized issue comments with content, author, and timestamps | Pending |
-| 10 | Activity history | Activity API for creation, status, assignee, severity, and priority changes | Pending |
-| 11 | Dashboard API | Access-scoped issue statistics and assigned-issue data | Pending |
+| 9 | Comments | Authorized issue comments with content, author, and timestamps | Complete — create, author, timestamp, newest-first, and access tests |
+| 10 | Activity history | Activity API for creation, status, assignee, severity, and priority changes | Complete — field-change and access tests |
+| 11 | Dashboard API | Access-scoped issue statistics and assigned-issue data | Complete — statistics and scoping tests |
 | 12 | Frontend foundation | React routes, authentication state, route protection, and endpoint modules | Pending |
 | 13 | Core UI | Responsive dashboard, projects, issues, issue detail, comments, and create/edit flows | Pending |
 | 14 | UI states | Loading, empty, error, retry, and success feedback for API-driven screens | Pending |
 | 15 | Frontend authorization | Role-aware controls as UX, while retaining backend enforcement as the security boundary | Pending |
 | 16 | Error handling | Complete centralized API error mapping and consistent response/error contracts | Pending |
 | 17 | Seed data | Demo users, projects, issues, comments, activities, and documented credentials | Pending |
-| 18 | Mandatory testing | Authentication, authorization, CRUD, workflow, filtering, comments, dashboard, and UI-state tests | In progress — 33 API tests passing |
+| 18 | Mandatory testing | Authentication, authorization, CRUD, workflow, filtering, comments, dashboard, and UI-state tests | In progress — 41 API tests passing |
 | 20 | README completion | Full setup, API, permissions, workflow, decisions, limitations, and screenshot documentation | Pending |
 | 21 | Final review | Requirement-by-requirement audit, clean repository review, and setup verification | Pending |
 
