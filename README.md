@@ -1,10 +1,9 @@
 # BugBoard
 
-BugBoard is a MERN issue-tracking application. This repository currently contains
-the Phase 1 application foundation: separate React and Express applications,
-environment templates, and a minimal API health endpoint.
-
-Feature implementation begins in later phases.
+BugBoard is a MERN issue-tracking application with a REST API and a React
+frontend. The backend auth, authorization, project, issue, workflow, and
+filtering layers are implemented and covered by an automated API test suite.
+The frontend is built next, followed by seed data and final documentation.
 
 ## Development Progress
 
@@ -13,6 +12,77 @@ Feature implementation begins in later phases.
 | 1 | Project architecture and configuration | Complete | Server syntax check, API health check, and client production build passed. |
 | 2 | MongoDB/Mongoose database schema | Complete | Schema validation and index-definition checks passed. |
 | 3 | Authentication and JWT | Complete | Validation, bcrypt hashing, JWT signing/verification, and protected-route checks passed. |
+
+## Project Status and Remaining Work
+
+**Mandatory progress:** 8 of 20 mandatory implementation phases are complete.
+**Remaining:** 12 mandatory phases. Phase 9 is next; all later mandatory phases
+are pending. The 8 bonus items remain deferred.
+
+### Completed
+
+- **Phase 1 — Architecture:** Separate React and Express applications, environment
+  templates, an API health endpoint, shared API-client foundation, and ignore rules.
+- **Phase 2 — Database:** User, Project, Issue, Comment, and Activity schemas;
+  references, enum constraints, and query-oriented indexes.
+- **Phase 3 — Authentication:** bcryptjs password hashing, JWT issuance and
+  verification, registration/login/current-user endpoints, input validation, and
+  rejection of public administrator registration.
+- **Phase 4 — Authorization:** Role middleware and an explicit permission policy
+  (admin/developer/tester) enforced on the server, plus project-membership access
+  checks so users cannot reach projects they do not belong to.
+- **Phase 5 — Project management:** Project CRUD, member add/remove, unique-key
+  validation, member-user validation, and project access applied on every route.
+- **Phase 6 — Issue management:** Issue CRUD, automatic reporter assignment,
+  member-validated assignee/reassignment, field-level update rules, and
+  status-change/assignee dedicated endpoints.
+- **Phase 7 — Status workflow:** An explicit server-side transition map
+  (`OPEN → IN_PROGRESS → TESTING → RESOLVED → CLOSED`, with TESTING/IN_PROGRESS and
+  RESOLVED/IN_PROGRESS rollback edges) and activity recording for every move.
+- **Phase 8 — Search and filtering:** Server-side `search`, `project`, `status`,
+  `priority`, `severity`, `reporter`, and `assignee` filters on `GET /api/issues`,
+  scoped to projects the caller can access.
+
+### Mandatory implementation order
+
+| Order | Phase | Remaining scope | Status |
+| --- | --- | --- | --- |
+| 4 | Authorization | Role-action policy and project-membership authorization enforced on the server | Complete — 403 tests for role and project access |
+| 5 | Project management | Project CRUD, member management, unique-key and access validation | Complete — CRUD, members, duplicate-key, and access tests |
+| 6 | Issue management | Issue CRUD, assignment/reassignment, project and assignee validation | Complete — CRUD, assign, reassign, and validation tests |
+| 7 | Status workflow | Explicit transition map and activity creation for status changes | Complete — transition-map and invalid-transition tests |
+| 8 | Search and filtering | Server-side issue search and filters by project, status, priority, severity, reporter, and assignee | Complete — search and filter tests |
+| 9 | Comments | Authorized issue comments with content, author, and timestamps | Pending |
+| 10 | Activity history | Activity API for creation, status, assignee, severity, and priority changes | Pending |
+| 11 | Dashboard API | Access-scoped issue statistics and assigned-issue data | Pending |
+| 12 | Frontend foundation | React routes, authentication state, route protection, and endpoint modules | Pending |
+| 13 | Core UI | Responsive dashboard, projects, issues, issue detail, comments, and create/edit flows | Pending |
+| 14 | UI states | Loading, empty, error, retry, and success feedback for API-driven screens | Pending |
+| 15 | Frontend authorization | Role-aware controls as UX, while retaining backend enforcement as the security boundary | Pending |
+| 16 | Error handling | Complete centralized API error mapping and consistent response/error contracts | Pending |
+| 17 | Seed data | Demo users, projects, issues, comments, activities, and documented credentials | Pending |
+| 18 | Mandatory testing | Authentication, authorization, CRUD, workflow, filtering, comments, dashboard, and UI-state tests | In progress — 33 API tests passing |
+| 20 | README completion | Full setup, API, permissions, workflow, decisions, limitations, and screenshot documentation | Pending |
+| 21 | Final review | Requirement-by-requirement audit, clean repository review, and setup verification | Pending |
+
+### Deferred bonus work
+
+Bonus work begins only after every mandatory phase above is verified:
+
+1. Activity timeline UI
+2. Kanban board using the same server-side status transition validation
+3. Pagination
+4. Sorting
+5. Additional automated API/component tests
+6. Attachments
+7. Notifications
+8. Docker and/or deployment
+
+### Delivery workflow
+
+Each phase is developed on a dedicated branch rather than `main`. Before the next
+phase begins, the phase is inspected, tested, recorded in this README, committed,
+pushed, opened as a pull request, and merged into `main`.
 
 ## Authentication
 
