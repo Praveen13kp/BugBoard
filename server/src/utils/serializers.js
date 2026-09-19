@@ -1,3 +1,5 @@
+import { allowedNextStatuses } from './workflow.js';
+
 function serializeUserRef(reference) {
   if (!reference) return null;
   if (typeof reference === 'object' && reference._id) {
@@ -44,6 +46,7 @@ export function serializeIssue(issue) {
     severity: issue.severity,
     priority: issue.priority,
     status: issue.status,
+    allowedStatusTransitions: allowedNextStatuses(issue.status),
     reporter: serializeUserRef(issue.reporter),
     assignee: serializeUserRef(issue.assignee),
     createdAt: issue.createdAt,

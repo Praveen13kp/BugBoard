@@ -15,9 +15,9 @@ The frontend is built next, followed by seed data and final documentation.
 
 ## Project Status and Remaining Work
 
-**Mandatory progress:** 11 of 20 mandatory implementation phases are complete.
-**Remaining:** 9 mandatory phases. The React frontend is next; all later
-mandatory phases are pending. The 8 bonus items remain deferred.
+**Mandatory progress:** 13 of 20 mandatory implementation phases are complete.
+**Remaining:** 7 mandatory phases. Final UI-state and role-UI polish, seed data,
+and comprehensive documentation remain. The 8 bonus items remain deferred.
 
 ### Completed
 
@@ -50,6 +50,15 @@ mandatory phases are pending. The 8 bonus items remain deferred.
 - **Phase 11 — Dashboard API:** Access-scoped statistics (total, open,
   in-progress, testing, resolved, closed, critical, and issues assigned to the
   caller) via `GET /api/dashboard`.
+- **Phase 12 — Frontend foundation:** React Router pages (`/login`, `/register`,
+  `/dashboard`, `/projects`, `/projects/:id`, `/issues`, `/issues/:id`,
+  `/create-issue`), an auth context with token/user persistence and session
+  restoration, a shared Axios client with auth header and 401 handling, and
+  grouped API endpoint modules.
+- **Phase 13 — Core UI:** Responsive sidebar/header layout, dashboard statistic
+  cards and quick-filter links, project grid and project detail with member
+  management, issue list with search and filters, an issue detail page with
+  workflow/assignee/field actions, comments, and an activity timeline.
 
 ### Mandatory implementation order
 
@@ -63,13 +72,13 @@ mandatory phases are pending. The 8 bonus items remain deferred.
 | 9 | Comments | Authorized issue comments with content, author, and timestamps | Complete — create, author, timestamp, newest-first, and access tests |
 | 10 | Activity history | Activity API for creation, status, assignee, severity, and priority changes | Complete — field-change and access tests |
 | 11 | Dashboard API | Access-scoped issue statistics and assigned-issue data | Complete — statistics and scoping tests |
-| 12 | Frontend foundation | React routes, authentication state, route protection, and endpoint modules | Pending |
-| 13 | Core UI | Responsive dashboard, projects, issues, issue detail, comments, and create/edit flows | Pending |
-| 14 | UI states | Loading, empty, error, retry, and success feedback for API-driven screens | Pending |
+| 12 | Frontend foundation | React routes, authentication state, route protection, and endpoint modules | Complete — all pages routed, auth context, route guard, API modules |
+| 13 | Core UI | Responsive dashboard, projects, issues, issue detail, comments, and create/edit flows | Complete — production client build passes |
+| 14 | UI states | Loading, empty, error, retry, and success feedback for API-driven screens | In progress — shared components exist; final sweep pending |
 | 15 | Frontend authorization | Role-aware controls as UX, while retaining backend enforcement as the security boundary | Pending |
 | 16 | Error handling | Complete centralized API error mapping and consistent response/error contracts | Pending |
 | 17 | Seed data | Demo users, projects, issues, comments, activities, and documented credentials | Pending |
-| 18 | Mandatory testing | Authentication, authorization, CRUD, workflow, filtering, comments, dashboard, and UI-state tests | In progress — 41 API tests passing |
+| 18 | Mandatory testing | Authentication, authorization, CRUD, workflow, filtering, comments, dashboard, and UI-state tests | In progress — 44 API tests passing |
 | 20 | README completion | Full setup, API, permissions, workflow, decisions, limitations, and screenshot documentation | Pending |
 | 21 | Final review | Requirement-by-requirement audit, clean repository review, and setup verification | Pending |
 
