@@ -12,6 +12,15 @@ Feature implementation begins in later phases.
 | --- | --- | --- | --- |
 | 1 | Project architecture and configuration | Complete | Server syntax check, API health check, and client production build passed. |
 | 2 | MongoDB/Mongoose database schema | Complete | Schema validation and index-definition checks passed. |
+| 3 | Authentication and JWT | Complete | Validation, bcrypt hashing, JWT signing/verification, and protected-route checks passed. |
+
+## Authentication
+
+`POST /api/auth/register`, `POST /api/auth/login`, and `GET /api/auth/me` use
+bcryptjs password hashing and signed JWT bearer tokens. Password hashes are not
+selected by default or returned in API responses. Public registration accepts
+Developer and Tester accounts only; administrator accounts must be provisioned by
+a later controlled workflow or the development seed script.
 
 ## Database Design
 
