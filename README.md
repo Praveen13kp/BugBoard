@@ -1,10 +1,62 @@
 # BugBoard
 
 BugBoard is a MERN issue-tracking application with a REST API and a React
-frontend. Authentication, authorization, projects, issues, the status workflow,
-comments, activity history, a dashboard API, and the responsive React UI are all
-implemented and covered by automated test suites, with an idempotent demo seed
-script for development.
+frontend. It implements authentication and role-based authorization, project and
+issue management, an explicit issue-status workflow, comments, an activity
+timeline, a dashboard API, and a responsive React UI with membership- and
+role-aware controls. Everything is covered by automated test suites (52 server
+API tests + 7 client policy tests) and an idempotent demo seed script.
+
+## Stack
+
+| Layer | Technology |
+| --- | --- |
+| Frontend | React 19, React Router 7, Axios, Vite 6 |
+| Backend | Node.js, Express 5, Mongoose 8 |
+| Data | MongoDB |
+| Auth | bcryptjs password hashing, JWT (stateless bearer tokens) |
+| Tests | Node's built-in test runner, `supertest`, `mongodb-memory-server` |
+
+## Getting Started
+
+Prerequisites: Node.js 20+, npm, and a local MongoDB instance (or use
+`MONGODB_URI` pointing at a hosted database).
+
+```bash
+# 1. Server
+cd server
+cp .env.example .env      # set MONGODB_URI and a real JWT_SECRET
+npm install
+npm run seed              # optional: demo users, projects, issues, comments, activity
+npm run dev               # API on http://localhost:5000
+
+# 2. Client (separate terminal)
+cd client
+npm install
+npm run dev               # UI on http://localhost:5173
+```
+
+Vite proxies `/api` to the server during development, so no CORS configuration
+is needed locally. `CLIENT_ORIGIN` controls the CORS allow-list for the API.
+
+### Environment variables
+
+`server/.env.example`
+
+| Variable | Description |
+| --- | --- |
+| `NODE_ENV` | `development`, `test`, or `production` |
+| `PORT` | API port (default `5000`) |
+| `MONGODB_URI` | MongoDB connection string |
+| `JWT_SECRET` | Signing secret. Required in production; a fallback exists for dev/test |
+| `JWT_EXPIRES_IN` | Token lifetime (default `1d`) |
+| `CLIENT_ORIGIN` | Allowed frontend origin (default `http://localhost:5173`) |
+
+`client/.env.example`
+
+| Variable | Description |
+| --- | --- |
+| `VITE_API_BASE_URL` | API base URL used by the client (default `/api`, proxied in dev) |
 
 ## Development Progress
 
@@ -16,9 +68,9 @@ script for development.
 
 ## Project Status and Remaining Work
 
-**Mandatory progress:** 18 of 20 mandatory implementation phases are complete.
-**Remaining:** 2 mandatory phases (comprehensive documentation and the final
-audit). The 8 bonus items remain deferred.
+**Mandatory progress:** 20 of 20 mandatory implementation phases are complete,
+including the documentation and final-review phases. No mandatory work remains;
+the 8 bonus items are deferred.
 
 ### Completed
 
@@ -79,10 +131,15 @@ audit). The 8 bonus items remain deferred.
   authorization, projects, issues, workflow, filtering, comments, activity,
   dashboard, users, the error contract, seed idempotency, and the frontend role
   policy — 52 server API tests and 7 client policy tests, all passing.
+- **Phase 20 — README completion:** Setup, API reference, permission model,
+  workflow, decisions, limitations, and screenshot documentation (this file).
+- **Phase 21 — Final review:** Requirement-by-requirement audit against the plan,
+  repository hygiene check, and verification of the server test suite, client
+  tests, production build, and seed idempotency.
 
 ### Mandatory implementation order
 
-| Order | Phase | Remaining scope | Status |
+| Order | Phase | Scope | Status |
 | --- | --- | --- | --- |
 | 4 | Authorization | Role-action policy and project-membership authorization enforced on the server | Complete — 403 tests for role and project access |
 | 5 | Project management | Project CRUD, member management, unique-key and access validation | Complete — CRUD, members, duplicate-key, and access tests |
@@ -99,8 +156,21 @@ audit). The 8 bonus items remain deferred.
 | 16 | Error handling | Complete centralized API error mapping and consistent response/error contracts | Complete — single error contract enforced and tested |
 | 17 | Seed data | Demo users, projects, issues, comments, activities, and documented credentials | Complete — idempotent seed script and tests |
 | 18 | Mandatory testing | Authentication, authorization, CRUD, workflow, filtering, comments, dashboard, and UI-state tests | Complete — 52 API + 7 client tests passing |
-| 20 | README completion | Full setup, API, permissions, workflow, decisions, limitations, and screenshot documentation | Pending |
-| 21 | Final review | Requirement-by-requirement audit, clean repository review, and setup verification | Pending |
+| 20 | README completion | Full setup, API, permissions, workflow, decisions, limitations, and screenshot documentation | Complete — this document |
+| 21 | Final review | Requirement-by-requirement audit, clean repository review, and setup verification | Complete — see Final Review |
+
+### Final review notes (Phase 21)
+
+- **Plan audit:** Each phase in the original implementation order (1–3 by the
+  initial scaffold, 4–18 and 20–21 here) maps to a delivered, tested item; no
+  mandatory phase is outstanding.
+- **Repository hygiene:** `node_modules/`, `dist/`, and `.env` files are ignored
+  and are not tracked; environment templates are documented in `.env.example`.
+- **Setup verification:** `server` `npm install` + `npm run check` + `npm test`
+  (52 pass) and `client` `npm install` + `npm test` (7 pass) + `npm run build`
+  (production build succeeds). Seed idempotency is verified by an automated test.
+- **Documented limitation:** screenshots (see below) are placeholders that should
+  be replaced with captures of the running UI.
 
 ### Deferred bonus work
 
@@ -146,6 +216,98 @@ The seed creates the Web Platform (`WEB`), Mobile App (`MOB`), and Payments API
 (`PAY`) projects with issues in every status so the dashboard and role behavior
 can be reviewed immediately. Rerunning the script is safe and adds nothing new.
 
+## API Reference
+
+All routes are under `/api`. Every route except `/health`, `/auth/register`, and
+`/auth/login` requires a `Authorization: Bearer <token>` header. Responses use
+the envelope documented in [Error Contract](#error-contract).
+
+| Area | Method | Path | Access | Description |
+| --- | --- | --- | --- | --- |
+| Health | GET | `/health` | public | Service liveness check |
+| Auth | POST | `/auth/register` | public | Register a Developer or Tester |
+| Auth | POST | `/auth/login` | public | Login, returns JWT and user |
+| Auth | GET | `/auth/me` | any authenticated | Current user profile |
+| Dashboard | GET | `/dashboard` | any authenticated | Access-scoped issue statistics |
+| Projects | GET | `/projects` | any authenticated | Projects the caller can access |
+| Projects | POST | `/projects` | ADMIN | Create a project |
+| Projects | GET | `/projects/:projectId` | member | Project detail with members |
+| Projects | PATCH | `/projects/:projectId` | ADMIN | Update name/key/description |
+| Projects | POST | `/projects/:projectId/members` | ADMIN | Add users to a project |
+| Projects | DELETE | `/projects/:projectId/members/:userId` | ADMIN | Remove a user from a project |
+| Users | GET | `/users` | ADMIN | List all users (no roles required for members screens) |
+| Issues | GET | `/issues` | member | List issues with search/filters |
+| Issues | POST | `/issues` | member | Create an issue (reporter is automatic) |
+| Issues | GET | `/issues/:issueId` | member | Issue detail |
+| Issues | PATCH | `/issues/:issueId` | role | Edit title/description/severity/priority |
+| Issues | PATCH | `/issues/:issueId/status` | role | Move through the workflow |
+| Issues | PATCH | `/issues/:issueId/assignee` | role | Assign/reassign the issue |
+| Issues | GET | `/issues/:issueId/comments` | member | List comments (newest first) |
+| Issues | POST | `/issues/:issueId/comments` | member | Add a comment |
+| Issues | GET | `/issues/:issueId/activity` | member | Activity timeline |
+
+Issue filters on `GET /issues`: `search`, `project`, `status`, `priority`,
+`severity`, `reporter`, `assignee`.
+
+## Permissions Model
+
+The server is the security boundary; the UI mirrors these rules to hide actions
+the user cannot perform.
+
+| Action | ADMIN | DEVELOPER (member) | TESTER (member) |
+| --- | --- | --- | --- |
+| Create/update projects, manage members | Yes | — | — |
+| View projects and issues | All | Their projects | Their projects |
+| Report issues | Any project | Projects they belong to | Projects they belong to |
+| Assign / reassign issues | Yes | Yes | — |
+| Edit issue details | Yes | Yes | Issues they reported |
+| Transition issue status | Yes | Yes | Issues they reported or are assigned to |
+| Comment on issues | Yes | Yes | Yes |
+| List users | Yes | — | — |
+
+## Status Workflow
+
+Statuses: `OPEN → IN_PROGRESS → TESTING → RESOLVED → CLOSED`, with two rollback
+edges. `CLOSED` is terminal.
+
+```
+OPEN ────▶ IN_PROGRESS ────▶ TESTING ────▶ RESOLVED ────▶ CLOSED
+                  ▲             │ ▲                     │
+                  └─────────────┘ └─────────────────────┘
+```
+
+Every transition is validated on the server and rejected with an
+`INVALID_STATUS_TRANSITION` error if the edge is not allowed. All transitions
+(and creation, assignment, and field edits) append an entry to the issue's
+activity history.
+
+## Error Contract
+
+Success responses use `{ "success": true, "data": { ... } }`. Errors always use
+`{ "success": false, "error": { "code": string, "message": string } }`.
+
+| HTTP | Code | Meaning |
+| --- | --- | --- |
+| 400 | `INVALID_JSON` | Request body is not valid JSON |
+| 400 | `INVALID_STATUS_TRANSITION`, `ISSUE_ALREADY_IN_STATUS`, `NO_CHANGES`, `NO_ASSIGNEE_CHANGE` | Business-rule conflicts |
+| 401 | `AUTHENTICATION_REQUIRED`, `INVALID_TOKEN`, `INVALID_CREDENTIALS` | Missing or invalid authentication |
+| 403 | `FORBIDDEN`, `PROJECT_ACCESS_DENIED` | Role or membership violation |
+| 404 | `NOT_FOUND`, `PROJECT_NOT_FOUND`, `ISSUE_NOT_FOUND`, `MEMBER_NOT_FOUND` | Missing resource or route |
+| 409 | `EMAIL_IN_USE`, `PROJECT_KEY_IN_USE`, `DUPLICATE` | Unique-key conflicts |
+| 422 | `VALIDATION_ERROR`, `INVALID_ASSIGNEE`, `ASSIGNEE_NOT_MEMBER`, `INVALID_MEMBER` | Invalid input |
+| 500 | `INTERNAL_SERVER_ERROR` | Unexpected failure |
+
+## Frontend Overview
+
+Routes: `/login`, `/register`, `/dashboard`, `/projects`, `/projects/:id`,
+`/issues`, `/issues/:id`, `/create-issue`. Authenticated routes are guarded by
+`AppLayout` (with a session-restore loading screen) and guest pages by
+`GuestRoute`. The shared Axios client attaches the JWT and redirects to `/login`
+on a 401. All API-driven screens provide loading, empty, error-with-retry, and
+success-acknowledgement states. Role and membership helpers in
+`client/src/utils/permissions.js` mirror the server policy so controls are
+hidden rather than merely rejected.
+
 ## Database Design
 
 BugBoard uses five collections. `Project.members`, `Project.createdBy`,
@@ -163,6 +325,10 @@ issue operation.
 | Comment | issue, author, content, timestamps |
 | Activity | issue, actor, action, field, oldValue, newValue, timestamp |
 
+Enums: roles `ADMIN`/`DEVELOPER`/`TESTER`; severities `LOW`/`MEDIUM`/`HIGH`/
+`CRITICAL`; priorities `LOW`/`MEDIUM`/`HIGH`/`URGENT`; statuses `OPEN`/
+`IN_PROGRESS`/`TESTING`/`RESOLVED`/`CLOSED`.
+
 ## Indexing Decisions
 
 - User email and project key have unique indexes for identity and project lookup.
@@ -171,3 +337,67 @@ issue operation.
   status lists and a user's project assignments.
 - Comments and activities are indexed by issue and descending timestamp, matching
   issue-detail timeline queries.
+
+## Design Decisions
+
+- **Server-enforced authorization with mirrored UI:** every protected action is
+  re-validated server-side regardless of what the UI shows; the frontend only
+  hides actions that would be rejected.
+- **Explicit workflow state machine:** statuses are not free-form; a transition
+  map (including rollback edges) is enforced centrally, and every move is
+  recorded as activity.
+- **Project membership as the access unit:** visibility and actions for projects
+  and their issues are scoped by membership, with administrators exempt.
+- **Consistent error envelope:** a single error handler serializes every failure
+  to `{ success, error: { code, message } }` for predictable client handling.
+- **Stateless auth:** bcrypt-hashed passwords with signed, expiring JWTs; no
+  server-side session store.
+- **Idempotent seed + memory-backed tests:** ephemeral `mongodb-memory-server`
+  keeps tests dependent on no local database, and the seed script can be rerun
+  safely against real databases.
+- **Development-only JWT fallback:** a non-production default secret keeps local
+  runs functional; production requires an explicit `JWT_SECRET`.
+
+## Limitations
+
+- No pagination or server-side sorting (single snapshot list per filter set).
+- No file attachments, notifications, or email delivery.
+- Public registration is restricted to Developer/Tester; administrators are
+  provisioned through the seed script or directly in the database.
+- No Docker image or deployment configuration yet (listed as bonus work).
+- `JWT_SECRET` must be set for production; the development fallback must not be
+  used there.
+- Screenshots below are placeholders pending manual capture.
+- A local or remote MongoDB instance is required to run the app (tests use
+  `mongodb-memory-server` instead).
+
+## Screenshots
+
+Placeholder — replace with captured screenshots of the running UI in
+`docs/screenshots/`:
+
+- `dashboard.png` — dashboard statistics and assigned-issues panel
+- `projects.png` — project grid with create-form (admin view)
+- `project-detail.png` — project page with members and issue list
+- `issues.png` — issue list with search and filters
+- `issue-detail.png` — issue detail with workflow, comments, and activity
+- `login.png` — sign-in screen
+
+## Testing
+
+```bash
+# Server (tests run against mongodb-memory-server; no local DB required)
+cd server
+npm run check             # syntax check across source files
+npm test                  # 52 API tests
+
+# Client
+cd client
+npm test                  # 7 role-policy/label tests
+npm run build             # production build verification
+```
+
+Coverage includes authentication, authorization (role + project membership),
+project CRUD and member management, issue CRUD and assignment, the status
+workflow, search/filtering, comments, activity history, dashboard statistics,
+user listing, the error contract, seed idempotency, and the frontend role policy.
