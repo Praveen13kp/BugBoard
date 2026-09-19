@@ -50,3 +50,27 @@ export function serializeIssue(issue) {
     updatedAt: issue.updatedAt,
   };
 }
+
+export function serializeComment(comment) {
+  return {
+    id: comment.id,
+    issue: serializeProjectRef(comment.issue),
+    author: serializeUserRef(comment.author),
+    content: comment.content,
+    createdAt: comment.createdAt,
+    updatedAt: comment.updatedAt,
+  };
+}
+
+export function serializeActivity(activity) {
+  return {
+    id: activity.id,
+    issue: String(activity.issue?._id ?? activity.issue),
+    actor: serializeUserRef(activity.actor),
+    action: activity.action,
+    field: activity.field,
+    oldValue: activity.oldValue,
+    newValue: activity.newValue,
+    timestamp: activity.timestamp,
+  };
+}
