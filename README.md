@@ -1,9 +1,10 @@
 # BugBoard
 
 BugBoard is a MERN issue-tracking application with a REST API and a React
-frontend. The backend auth, authorization, project, issue, workflow, and
-filtering layers are implemented and covered by an automated API test suite.
-The frontend is built next, followed by seed data and final documentation.
+frontend. Authentication, authorization, projects, issues, the status workflow,
+comments, activity history, a dashboard API, and the responsive React UI are all
+implemented and covered by automated test suites, with an idempotent demo seed
+script for development.
 
 ## Development Progress
 
@@ -15,9 +16,9 @@ The frontend is built next, followed by seed data and final documentation.
 
 ## Project Status and Remaining Work
 
-**Mandatory progress:** 15 of 20 mandatory implementation phases are complete.
-**Remaining:** 5 mandatory phases. Error-handling middleware polish, seed data,
-and comprehensive documentation remain. The 8 bonus items remain deferred.
+**Mandatory progress:** 18 of 20 mandatory implementation phases are complete.
+**Remaining:** 2 mandatory phases (comprehensive documentation and the final
+audit). The 8 bonus items remain deferred.
 
 ### Completed
 
@@ -67,6 +68,17 @@ and comprehensive documentation remain. The 8 bonus items remain deferred.
   gating mirrored to server policy — project creation and member management are
   administrator-only, report-issue actions appear only to members (or admins) of
   a project, and issue workflow/assign/edit actions follow the role model.
+- **Phase 16 — Error handling:** A single centralized error handler enforces one
+  response contract (`success: false` with an `error.code` and `error.message`)
+  for application errors, validation failures, invalid ObjectIds, duplicate
+  keys, malformed JSON bodies, unknown routes, and unexpected failures.
+- **Phase 17 — Seed data:** An idempotent `npm run seed` script provisions demo
+  accounts, projects, issues, comments, and activity history with documented
+  credentials for development and review.
+- **Phase 18 — Mandatory testing:** Automated suites now cover authentication,
+  authorization, projects, issues, workflow, filtering, comments, activity,
+  dashboard, users, the error contract, seed idempotency, and the frontend role
+  policy — 52 server API tests and 7 client policy tests, all passing.
 
 ### Mandatory implementation order
 
@@ -84,9 +96,9 @@ and comprehensive documentation remain. The 8 bonus items remain deferred.
 | 13 | Core UI | Responsive dashboard, projects, issues, issue detail, comments, and create/edit flows | Complete — production client build passes |
 | 14 | UI states | Loading, empty, error, retry, and success feedback for API-driven screens | Complete — shared states applied across all screens |
 | 15 | Frontend authorization | Role-aware controls as UX, while retaining backend enforcement as the security boundary | Complete — membership and role gating across screens |
-| 16 | Error handling | Complete centralized API error mapping and consistent response/error contracts | Pending |
-| 17 | Seed data | Demo users, projects, issues, comments, activities, and documented credentials | Pending |
-| 18 | Mandatory testing | Authentication, authorization, CRUD, workflow, filtering, comments, dashboard, and UI-state tests | In progress — 44 API tests passing |
+| 16 | Error handling | Complete centralized API error mapping and consistent response/error contracts | Complete — single error contract enforced and tested |
+| 17 | Seed data | Demo users, projects, issues, comments, activities, and documented credentials | Complete — idempotent seed script and tests |
+| 18 | Mandatory testing | Authentication, authorization, CRUD, workflow, filtering, comments, dashboard, and UI-state tests | Complete — 52 API + 7 client tests passing |
 | 20 | README completion | Full setup, API, permissions, workflow, decisions, limitations, and screenshot documentation | Pending |
 | 21 | Final review | Requirement-by-requirement audit, clean repository review, and setup verification | Pending |
 
@@ -117,13 +129,31 @@ selected by default or returned in API responses. Public registration accepts
 Developer and Tester accounts only; administrator accounts must be provisioned by
 a later controlled workflow or the development seed script.
 
+## Seed Data
+
+`npm run seed` (from `server/`) connects to `MONGODB_URI` and idempotently
+creates demo users, projects, issues, comments, and activity history. Every demo
+account uses the password `Password123!` (override with `SEED_PASSWORD`).
+
+| Role | Name | Email |
+| --- | --- | --- |
+| ADMIN | Ada Admin | admin@bugboard.dev |
+| DEVELOPER | Leo Lead | lead@bugboard.dev |
+| DEVELOPER | Dana Dev | dev@bugboard.dev |
+| TESTER | Tina Tester | tester@bugboard.dev |
+
+The seed creates the Web Platform (`WEB`), Mobile App (`MOB`), and Payments API
+(`PAY`) projects with issues in every status so the dashboard and role behavior
+can be reviewed immediately. Rerunning the script is safe and adds nothing new.
+
 ## Database Design
 
 BugBoard uses five collections. `Project.members`, `Project.createdBy`,
 `Issue.project`, `Issue.reporter`, `Issue.assignee`, `Comment.issue`,
 `Comment.author`, `Activity.issue`, and `Activity.actor` are ObjectId references.
-The application will validate relationship and project-access rules in later service
-and authorization phases.
+Relationship and project-access rules are enforced by the service and
+authorization layers, with project membership validated on every project and
+issue operation.
 
 | Collection | Main fields |
 | --- | --- |
