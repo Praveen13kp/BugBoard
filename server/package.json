@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "check": "node --check src/app.js && node --check src/server.js && node --check src/config/database.js && node --check src/config/env.js && node --check src/utils/enums.js && node --check src/utils/AppError.js && node --check src/utils/asyncHandler.js && node --check src/models/User.js && node --check src/models/Project.js && node --check src/models/Issue.js && node --check src/models/Comment.js && node --check src/models/Activity.js && node --check src/services/authService.js && node --check src/validators/authValidator.js && node --check src/middleware/authenticate.js && node --check src/controllers/authController.js && node --check src/routes/authRoutes.js"
+    "check": "node scripts/syntax-check.mjs",
+    "test": "node --test --test-concurrency=1 tests/"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -17,6 +18,8 @@
     "mongoose": "^8.13.2"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "mongodb-memory-server": "^11.2.0",
+    "nodemon": "^3.1.10",
+    "supertest": "^7.2.2"
   }
 }
