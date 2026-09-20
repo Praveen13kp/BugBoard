@@ -1295,6 +1295,19 @@ textarea.input {
   border-radius: var(--radius-lg);
   background: var(--bg-subtle);
   border: 1px solid var(--border-faint);
+  transition: border-color var(--fast), background var(--fast), box-shadow var(--fast);
+}
+
+.kanban-column.is-drop-target {
+  border-color: var(--brand-400);
+  background: var(--brand-050);
+  box-shadow: 0 0 0 3px var(--brand-100);
+}
+
+.kanban-column.is-drop-invalid {
+  border-color: var(--danger-400);
+  background: var(--danger-050);
+  box-shadow: 0 0 0 3px var(--danger-100);
 }
 
 .kanban-column-head {
@@ -1400,6 +1413,29 @@ textarea.input {
   transform: translateY(-2px);
   border-color: var(--brand-200);
   box-shadow: var(--shadow-md);
+}
+
+.kanban-card.is-moving {
+  opacity: 0.55;
+  pointer-events: none;
+  filter: saturate(0.6);
+}
+
+.kanban-card.is-dragging {
+  opacity: 0.35;
+  transform: scale(0.98) rotate(-1deg);
+  border-color: var(--brand-400);
+  border-style: dashed;
+  cursor: grabbing;
+}
+
+.kanban-card .kanban-card-title {
+  cursor: grab;
+}
+
+.kanban-card.is-moving .kanban-card-title,
+.kanban-card.is-dragging .kanban-card-title {
+  cursor: default;
 }
 
 .kanban-card--open::before {

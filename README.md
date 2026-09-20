@@ -233,6 +233,7 @@ server can sort semantically without arbitrary string injection into queries.
 | `JWT_SECRET` | Signing secret; required in production (dev/test fallback exists) |
 | `JWT_EXPIRES_IN` | Token lifetime (default `1d`) |
 | `CLIENT_ORIGIN` | Allowed frontend origin (default `http://localhost:5173`) |
+| `UPLOAD_DIR` | Local attachment directory (default `uploads`; keep it outside version control) |
 
 `client/.env.example`:
 
@@ -355,6 +356,12 @@ and a production `MONGODB_URI`.
   a zero-database local workflow.
 - **Development-only JWT fallback**: a non-production default secret keeps local
   runs functional; production requires an explicit `JWT_SECRET`.
+- **Private attachment delivery**: metadata is stored in MongoDB while files use
+  randomized names on local disk; every list, download, and delete request first
+  passes the same project-access check as the issue itself.
+- **In-app notification records**: notifications are persisted per recipient and
+  derive from assignment, status, and comment events; no external email provider
+  or credentials are needed.
 
 ## Bonus Features
 
@@ -370,11 +377,13 @@ Implemented:
 - **Sorting**: server-side `sort` (newest, oldest, updated, priority, severity)
   with a client sort selector; sort keys are validated and never injected
   directly.
+- **Attachments**: project members can attach approved image, document, and
+  archive types up to 5 MB; files are access-controlled and excluded from Git.
+- **In-app notifications**: assignment, workflow, and comment activity can
+  create per-user notifications with unread and read-state endpoints.
 
 Deferred by design (see Limitations):
 
-- **Attachments / screenshots on issues**
-- **Notifications / email**
 - **Docker / deployment config**
 
 ## Screenshots
@@ -395,12 +404,12 @@ sign in with a demo account, and capture the corresponding route.
 
 ## Limitations
 
-- **Attachments** are intentionally omitted: production-safe object storage (not
-  local filesystem uploads) was outside the assignment's scope, so the feature is
-  documented rather than implemented unsafely.
-- **Notifications/email** are not implemented. No SMTP credentials are required
-  or configured; introducing email would need an environment-configured optional
-  provider.
+- **Attachment storage is local-disk only**. It is suitable for local development
+  but is not shared across multiple server instances or durable container hosts;
+  production should use object storage and malware scanning.
+- **Notifications are in-app only**. There is no email, push delivery, or
+  notification-preferences system, and no third-party provider credentials are
+  required or configured.
 - **Docker/deployment** is not yet configured; local development continues to use
   plain `npm` commands with a MongoDB connection or the in-memory launcher.
 - Public registration is restricted to Developer/Tester; administrators are
@@ -414,8 +423,8 @@ sign in with a demo account, and capture the corresponding route.
 
 - Drag-and-drop on the Kanban board (the current board is click-to-move; it
   already calls the same server-validated transitions).
-- Attachments with object storage validation for type, size, and safe access.
-- In-app notifications and optionally email.
+- Object-storage-backed attachments with malware scanning and retention rules.
+- Email/push delivery, notification preferences, and @mentions.
 - Docker images and `docker-compose.yml` for client, server, and MongoDB.
 - Deep-linkable filter presets and saved views.
 - Per-user notifications preferences and @mentions.

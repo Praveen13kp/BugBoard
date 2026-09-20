@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Badge from '../common/Badge';
 import { STATUS_LABELS } from '../../utils/format';
@@ -15,13 +16,52 @@ function slug(value) {
 
 export default function KanbanBoard({ issues, onMove, movingId }) {
   const groups = groupIssuesByStatus(issues);
+  const [drag, setDrag] = useState(null);
+
+  function startDrag(issue) {
+    if (movingId) return;
+    setDrag({ issue, target: null });
+  }
+
+  function clearDrag() {
+    setDrag(null);
+  }
+
+  function handleDragOver(event, status) {
+    event.preventDefault();
+    if (!drag) return;
+    const valid = (drag.issue.allowedStatusTransitions || []).includes(status);
+    setDrag((current) => (current ? { ...current, target: status, verdict: valid ? 'valid' : 'invalid' } : current));
+  }
+
+  function handleDrop(event, status) {
+    event.preventDefault();
+    if (!drag) return;
+    const issue = drag.issue;
+    setDrag(null);
+    onMove(issue, status);
+  }
 
   return (
     <div className="kanban">
       {ISSUE_STATUS_ORDER.map((status) => {
         const columnIssues = groups.get(status) || [];
+        const isTarget = drag?.target === status;
+        const isInvalidTarget = isTarget && drag?.verdict === 'invalid';
+        const columnClass = [
+          'kanban-column',
+          isTarget ? (isInvalidTarget ? 'is-drop-invalid' : 'is-drop-target') : '',
+        ]
+          .filter(Boolean)
+          .join(' ');
         return (
-          <section key={status} className="kanban-column" aria-label={`${STATUS_LABELS[status]} issues`}>
+          <section
+            key={status}
+            className={columnClass}
+            aria-label={`${STATUS_LABELS[status]} issues`}
+            onDragOver={(event) => handleDragOver(event, status)}
+            onDrop={(event) => handleDrop(event, status)}
+          >
             <header className="kanban-column-head">
               <span className={`kanban-dot kanban-dot--${slug(status)}`} aria-hidden="true" />
               <strong>{STATUS_LABELS[status]}</strong>
@@ -35,6 +75,9 @@ export default function KanbanBoard({ issues, onMove, movingId }) {
                   issue={issue}
                   onMove={onMove}
                   moving={movingId === issue.id}
+                  dragging={drag?.issue?.id === issue.id}
+                  onDragStart={() => startDrag(issue)}
+                  onDragEnd={clearDrag}
                 />
               ))}
             </div>
@@ -45,10 +88,29 @@ export default function KanbanBoard({ issues, onMove, movingId }) {
   );
 }
 
-function KanbanCard({ issue, onMove, moving }) {
+function KanbanCard({ issue, onMove, moving, dragging, onDragStart, onDragEnd }) {
   const statusClass = slug(issue.status);
+  const className = [
+    'kanban-card',
+    `kanban-card--${statusClass}`,
+    moving ? 'is-moving' : '',
+    dragging ? 'is-dragging' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <article className={`kanban-card kanban-card--${statusClass}${moving ? ' is-moving' : ''}`}>
+    <article
+      className={className}
+      draggable={!moving}
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', issue.id);
+        onDragStart();
+      }}
+      onDragEnd={onDragEnd}
+      title="Drag to move between columns"
+    >
       <span className="issue-key mono">
         {issue.project?.key || '?'}-{issue.id.slice(0, 6)}
       </span>
@@ -72,7 +134,7 @@ function KanbanCard({ issue, onMove, moving }) {
             <span className="subtle">Unassigned</span>
           )}
         </span>
-        <MoveControl issue={issue} onMove={onMove} disabled={moving} />
+        <MoveControl issue={issue} onMove={onMove} disabled={moving || dragging} />
       </footer>
     </article>
   );

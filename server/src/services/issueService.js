@@ -6,6 +6,7 @@ import { canAssignIssue, canTransitionIssue, canUpdateIssue } from '../utils/per
 import { allowedNextStatuses, canTransition } from '../utils/workflow.js';
 import { ensureProjectAccess } from './accessService.js';
 import { recordActivity } from './activityService.js';
+import { createIssueNotifications } from './notificationService.js';
 
 const USER_FIELDS = 'name email role';
 const PROJECT_FIELDS = 'name key members';
@@ -133,6 +134,13 @@ export async function createIssue(user, input) {
   await recordActivity(issue.id, user.id, 'created', { newValue: `${issue.title} was opened.` });
   if (assignee) {
     await recordActivity(issue.id, user.id, 'updated', { field: 'assignee', oldValue: 'unassigned', newValue: assignee.name });
+    await createIssueNotifications({
+      recipientIds: [assignee.id],
+      actorId: user.id,
+      type: 'ASSIGNED',
+      issue,
+      message: `${user.name} assigned you to "${issue.title}".`,
+    });
   }
 
   return getIssueForUser(user, issue.id);
@@ -204,6 +212,14 @@ export async function changeIssueStatus(user, issueId, nextStatus) {
   await issue.save();
   await recordActivity(issue.id, user.id, 'updated', { field: 'status', oldValue: previousStatus, newValue: nextStatus });
 
+  await createIssueNotifications({
+    recipientIds: [issue.reporter?._id ?? issue.reporter, issue.assignee?._id ?? issue.assignee],
+    actorId: user.id,
+    type: 'STATUS_CHANGED',
+    issue,
+    message: `${user.name} moved "${issue.title}" to ${nextStatus.replaceAll('_', ' ')}.`,
+  });
+
   return getIssueForUser(user, issue.id);
 }
 
@@ -220,6 +236,7 @@ export async function changeIssueAssignee(user, issueId, assigneeId) {
   }
 
   const previousName = issue.assignee?.name || 'unassigned';
+  const previousAssigneeId = issue.assignee?._id ?? issue.assignee ?? null;
   issue.assignee = assignee ? assignee.id : null;
   await issue.save();
   await recordActivity(issue.id, user.id, 'updated', {
@@ -227,6 +244,26 @@ export async function changeIssueAssignee(user, issueId, assigneeId) {
     oldValue: previousName,
     newValue: assignee ? assignee.name : 'unassigned',
   });
+
+  if (assignee) {
+    await createIssueNotifications({
+      recipientIds: [assignee.id],
+      actorId: user.id,
+      type: previousAssigneeId ? 'REASSIGNED' : 'ASSIGNED',
+      issue,
+      message: `${user.name} assigned "${issue.title}" to you.`,
+    });
+  }
+
+  if (previousAssigneeId && String(previousAssigneeId) !== String(assignee?.id ?? '')) {
+    await createIssueNotifications({
+      recipientIds: [previousAssigneeId],
+      actorId: user.id,
+      type: 'REASSIGNED',
+      issue,
+      message: `${user.name} unassigned you from "${issue.title}".`,
+    });
+  }
 
   return getIssueForUser(user, issue.id);
 }

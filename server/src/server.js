@@ -1,9 +1,11 @@
 import app from './app.js';
 import { connectDatabase } from './config/database.js';
 import env from './config/env.js';
+import { createUploadsPlaceholder } from './utils/attachmentStorage.js';
 
 async function startServer() {
   await connectDatabase();
+  createUploadsPlaceholder();
   app.listen(env.port, () => console.log(`BugBoard API listening on port ${env.port}`));
 }
 

@@ -8,3 +8,6 @@ coverage/
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
+
+# Uploaded files (never commit user content)
+server/uploads/

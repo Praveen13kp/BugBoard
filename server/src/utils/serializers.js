@@ -77,3 +77,31 @@ export function serializeActivity(activity) {
     timestamp: activity.timestamp,
   };
 }
+
+export function serializeAttachment(attachment) {
+  return {
+    id: attachment.id,
+    issue: String(attachment.issue?._id ?? attachment.issue),
+    uploader: serializeUserRef(attachment.uploader),
+    originalName: attachment.originalName,
+    storedName: null,
+    mimeType: attachment.mimeType,
+    size: attachment.size,
+    image: String(attachment.mimeType || '').startsWith('image/'),
+    createdAt: attachment.createdAt,
+  };
+}
+
+export function serializeNotification(notification) {
+  return {
+    id: notification.id,
+    user: String(notification.user?._id ?? notification.user),
+    actor: serializeUserRef(notification.actor),
+    type: notification.type,
+    issue: String(notification.issue?._id ?? notification.issue),
+    issueTitle: notification.issueTitle,
+    message: notification.message,
+    read: Boolean(notification.read),
+    createdAt: notification.createdAt,
+  };
+}

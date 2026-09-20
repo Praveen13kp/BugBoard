@@ -39,6 +39,15 @@ export function errorHandler(error, _request, response, _next) {
     return;
   }
 
+  if (error.name === 'MulterError') {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      sendError(response, 413, 'FILE_TOO_LARGE', 'The file is larger than the 5 MB limit.');
+      return;
+    }
+    sendError(response, 400, 'UPLOAD_ERROR', error.message || 'The upload could not be processed.');
+    return;
+  }
+
   console.error(error);
   sendError(response, 500, 'INTERNAL_SERVER_ERROR', 'An unexpected server error occurred.');
 }

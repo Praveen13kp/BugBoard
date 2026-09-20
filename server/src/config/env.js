@@ -10,6 +10,7 @@ const env = {
   // Development/test only fallback. Production requires a real JWT_SECRET.
   jwtSecret: process.env.JWT_SECRET || (isProduction ? undefined : 'development-only-jwt-secret-change-me'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1d',
+  uploadDir: process.env.UPLOAD_DIR || 'uploads',
 };
 
 export default env;
