@@ -1,13 +1,40 @@
 # BugBoard
 
-BugBoard is a MERN issue-tracking application with a REST API and a React
-frontend. It implements authentication and role-based authorization, project and
-issue management, an explicit issue-status workflow, comments, an activity
-timeline, a dashboard API, and a responsive React UI with membership- and
-role-aware controls. Everything is covered by automated test suites (52 server
-API tests + 7 client policy tests) and an idempotent demo seed script.
+BugBoard is a MERN (MongoDB · Express · React · Node) issue-tracking application
+with a REST API, role-based authorization, an explicit issue-status workflow, and
+a polished responsive frontend. It covers reporting and tracking software issues
+from creation through resolution — with projects, membership and role rules
+enforced on the server, comments and activity history in context, a dashboard,
+search and filtering, and list **and** Kanban views.
 
-## Stack
+## Overview
+
+- Public SaaS-style landing page at `/`.
+- Authenticated app at `/dashboard`, `/issues`, `/projects`, and detail pages.
+- Admin / Developer / Tester roles enforced server-side.
+- Issue workflow `OPEN → IN_PROGRESS → TESTING → RESOLVED → CLOSED` (with
+  rollback edges), validated on the server on every status change.
+- Comments and an activity timeline on each issue.
+- Project-scoped access: membership defines who sees and edits what.
+- Search, filters, server-side sorting and pagination.
+- List view and drag-free Kanban view that moves issues through the same
+  server-validated workflow.
+- Covered by automated suites: server API tests, client policy/util tests,
+  a syntax check, and a production client build.
+
+## Features
+
+- **Issue & Bug Tracking** — report and manage issues from creation through resolution.
+- **Project Management** — organize issues by project and control membership.
+- **Role-Based Access** — Admin, Developer and Tester permissions enforced by the backend.
+- **Structured Workflow** — server-validated status transitions with rollback rules.
+- **Search & Filters** — filter by project, status, priority, severity, reporter, assignee; full-text search on title/description.
+- **Sorting & Pagination** — server-side sort (recent, newest, oldest, priority, severity) and paged listing.
+- **Comments & Activity** — discussion and an activity timeline in issue context.
+- **Dashboard Insights** — issue statistics plus issues assigned to the current user.
+- **Kanban View** — board-style columns that call the real status API.
+
+## Tech Stack
 
 | Layer | Technology |
 | --- | --- |
@@ -15,212 +42,131 @@ API tests + 7 client policy tests) and an idempotent demo seed script.
 | Backend | Node.js, Express 5, Mongoose 8 |
 | Data | MongoDB |
 | Auth | bcryptjs password hashing, JWT (stateless bearer tokens) |
-| Tests | Node's built-in test runner, `supertest`, `mongodb-memory-server` |
+| Tests | Node built-in test runner, `supertest`, `mongodb-memory-server` |
 
-## Getting Started
+## Architecture
 
-Prerequisites: Node.js 20+, npm, and a local MongoDB instance (or use
-`MONGODB_URI` pointing at a hosted database).
-
-```bash
-# 1. Server
-cd server
-cp .env.example .env      # set MONGODB_URI and a real JWT_SECRET
-npm install
-npm run seed              # optional: demo users, projects, issues, comments, activity
-npm run dev               # API on http://localhost:5000
-
-# 2. Client (separate terminal)
-cd client
-npm install
-npm run dev               # UI on http://localhost:5173
+```
+client/   React SPA (Vite)           → http://localhost:5173
+server/   Express REST API (ESM)     → http://localhost:5000/api
+docs/screenshots/  Captured UI screenshots used by this README
 ```
 
-Vite proxies `/api` to the server during development, so no CORS configuration
-is needed locally. `CLIENT_ORIGIN` controls the CORS allow-list for the API.
+- The client talks to the API through a shared Axios client
+  (`client/src/api/httpClient.js`) that attaches the JWT and redirects on 401.
+- API code is layered as `routes → controllers → services → models`, with
+  validators and a centralized error handler producing one response contract.
+- Routing is defined in `client/src/routes/AppRoutes.jsx`: `/` is the public
+  landing page; `/login` and `/register` are guest-only; everything else lives
+  inside the authenticated `AppLayout`.
 
-### Environment variables
+```
+/            → public BugBoard landing page
+/login       → sign in (redirects signed-in users)
+/register    → create a Developer or Tester account (redirects signed-in users)
+/dashboard   → statistics + assigned issues
+/issues      → list or Kanban view with search, filters, sort, pagination
+/issues/:id  → issue detail with workflow, comments, activity
+/projects    → project grid
+/projects/:id → project detail with members and issues
+/create-issue → create an issue
+```
 
-`server/.env.example`
+## Authentication & Authorization
 
-| Variable | Description |
-| --- | --- |
-| `NODE_ENV` | `development`, `test`, or `production` |
-| `PORT` | API port (default `5000`) |
-| `MONGODB_URI` | MongoDB connection string |
-| `JWT_SECRET` | Signing secret. Required in production; a fallback exists for dev/test |
-| `JWT_EXPIRES_IN` | Token lifetime (default `1d`) |
-| `CLIENT_ORIGIN` | Allowed frontend origin (default `http://localhost:5173`) |
+- `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` use
+  bcryptjs password hashing and signed, expiring JWT bearer tokens.
+- Password hashes are never selected or returned by default.
+- Public registration creates **Developer** and **Tester** accounts only;
+  administrators are provisioned through the seed script or directly in the DB.
+- Authorization is enforced on the server for every protected action; the UI
+  mirrors the policy only to hide actions that would be rejected.
 
-`client/.env.example`
+## Roles
 
-| Variable | Description |
-| --- | --- |
-| `VITE_API_BASE_URL` | API base URL used by the client (default `/api`, proxied in dev) |
-
-## Development Progress
-
-| Phase | Scope | Status | Verification |
+| Action | ADMIN | DEVELOPER (member) | TESTER (member) |
 | --- | --- | --- | --- |
-| 1 | Project architecture and configuration | Complete | Server syntax check, API health check, and client production build passed. |
-| 2 | MongoDB/Mongoose database schema | Complete | Schema validation and index-definition checks passed. |
-| 3 | Authentication and JWT | Complete | Validation, bcrypt hashing, JWT signing/verification, and protected-route checks passed. |
+| Create/update projects, manage members | Yes | — | — |
+| View projects and issues | All | Their projects | Their projects |
+| Report issues | Any project | Their projects | Their projects |
+| Assign / reassign issues | Yes | Yes | — |
+| Edit issue details | Yes | Yes | Issues they reported |
+| Transition issue status | Yes | Yes | Issues they reported or are assigned to |
+| Comment on issues | Yes | Yes | Yes |
+| List users | Yes | — | — |
 
-## Project Status and Remaining Work
+## Project Management
 
-**Mandatory progress:** 20 of 20 mandatory implementation phases are complete,
-including the documentation and final-review phases. No mandatory work remains;
-the 8 bonus items are deferred.
+- Projects have a name, unique key, description, members, and a creator.
+- Project-level access: users only see projects they belong to (admins see all),
+  and this check applies on every project and issue route.
+- Membership is managed by administrators via
+  `POST /projects/:projectId/members` and `DELETE /projects/:projectId/members/:userId`.
 
-### Completed
+## Issue Workflow
 
-- **Phase 1 — Architecture:** Separate React and Express applications, environment
-  templates, an API health endpoint, shared API-client foundation, and ignore rules.
-- **Phase 2 — Database:** User, Project, Issue, Comment, and Activity schemas;
-  references, enum constraints, and query-oriented indexes.
-- **Phase 3 — Authentication:** bcryptjs password hashing, JWT issuance and
-  verification, registration/login/current-user endpoints, input validation, and
-  rejection of public administrator registration.
-- **Phase 4 — Authorization:** Role middleware and an explicit permission policy
-  (admin/developer/tester) enforced on the server, plus project-membership access
-  checks so users cannot reach projects they do not belong to.
-- **Phase 5 — Project management:** Project CRUD, member add/remove, unique-key
-  validation, member-user validation, and project access applied on every route.
-- **Phase 6 — Issue management:** Issue CRUD, automatic reporter assignment,
-  member-validated assignee/reassignment, field-level update rules, and
-  status-change/assignee dedicated endpoints.
-- **Phase 7 — Status workflow:** An explicit server-side transition map
-  (`OPEN → IN_PROGRESS → TESTING → RESOLVED → CLOSED`, with TESTING/IN_PROGRESS and
-  RESOLVED/IN_PROGRESS rollback edges) and activity recording for every move.
-- **Phase 8 — Search and filtering:** Server-side `search`, `project`, `status`,
-  `priority`, `severity`, `reporter`, and `assignee` filters on `GET /api/issues`,
-  scoped to projects the caller can access.
-- **Phase 9 — Comments:** Authorized comment listing and creation with author and
-  timestamp; comments are restricted to members of the issue's project.
-- **Phase 10 — Activity history:** An activity record is created for issue
-  creation, status/assignee/severity/priority changes, exposed through
-  `GET /api/issues/:issueId/activity` with access checks and author population.
-- **Phase 11 — Dashboard API:** Access-scoped statistics (total, open,
+Statuses: `OPEN → IN_PROGRESS → TESTING → RESOLVED → CLOSED`, with two rollback
+edges. `CLOSED` is terminal.
+
+```
+OPEN ────▶ IN_PROGRESS ────▶ TESTING ────▶ RESOLVED ────▶ CLOSED
+                  ▲             │ ▲                     │
+                  └─────────────┘ └─────────────────────┘
+                  (IN_PROGRESS)     (IN_PROGRESS)
+```
+
+- Every transition is validated on the server and rejected with
+  `INVALID_STATUS_TRANSITION` when the edge is not allowed.
+- The current status includes its allowed next statuses in API responses
+  (`allowedStatusTransitions`), so the UI only offers legal moves.
+- The Kanban view moves issues only through these allowed transitions, calling
+  the real status endpoint.
+- Transitions, creation, assignment, and field edits all append an entry to the
+  issue's activity history.
+
+## Search & Filtering
+
+`GET /api/issues` supports:
+
+- `search` — case-insensitive match on title and description.
+- `project`, `status`, `priority`, `severity`, `reporter`, `assignee`.
+
+Results are always scoped to projects the caller can access.
+
+## Sorting & Pagination
+
+- `sort` — one of `newest`, `oldest`, `updated`, `priority`, `severity`.
+  Sort keys are whitelisted server-side; arbitrary sort strings are never passed
+  to MongoDB. Priority/severity use precomputed numeric ranks.
+- `page` + `limit` — paged results with `pagination` metadata
+  (`{ page, limit, total, totalPages }`); `limit` is capped at 100.
+- Omitting `page`/`limit` preserves the original behavior of returning the full
+  filtered result set (`pagination` is `null`).
+
+## Comments & Activity
+
+- **Comments**: members of an issue's project can list and add comments; each
+  comment records its author and timestamps (newest first).
+- **Activity**: an `Activity` record is created for issue creation and for
+  status, assignee, severity, and priority changes. `GET /api/issues/:issueId/activity`
+  returns the timeline with actor population and access checks.
+- The issue detail page renders both the comment list/form and the activity timeline.
+
+## Dashboard
+
+- `GET /api/dashboard` returns access-scoped statistics: total, open,
   in-progress, testing, resolved, closed, critical, and issues assigned to the
-  caller) via `GET /api/dashboard`.
-- **Phase 12 — Frontend foundation:** React Router pages (`/login`, `/register`,
-  `/dashboard`, `/projects`, `/projects/:id`, `/issues`, `/issues/:id`,
-  `/create-issue`), an auth context with token/user persistence and session
-  restoration, a shared Axios client with auth header and 401 handling, and
-  grouped API endpoint modules.
-- **Phase 13 — Core UI:** Responsive sidebar/header layout, dashboard statistic
-  cards and quick-filter links, project grid and project detail with member
-  management, issue list with search and filters, an issue detail page with
-  workflow/assignee/field actions, comments, and an activity timeline.
-- **Phase 14 — UI states:** Consistent loading, empty, error-and-retry, and
-  success-acknowledgement feedback across every API-driven screen, a
-  session-restore loading screen, and guest-route redirects so signed-in users
-  are taken away from `/login` and `/register`.
-- **Phase 15 — Frontend authorization:** Membership- and role-aware control
-  gating mirrored to server policy — project creation and member management are
-  administrator-only, report-issue actions appear only to members (or admins) of
-  a project, and issue workflow/assign/edit actions follow the role model.
-- **Phase 16 — Error handling:** A single centralized error handler enforces one
-  response contract (`success: false` with an `error.code` and `error.message`)
-  for application errors, validation failures, invalid ObjectIds, duplicate
-  keys, malformed JSON bodies, unknown routes, and unexpected failures.
-- **Phase 17 — Seed data:** An idempotent `npm run seed` script provisions demo
-  accounts, projects, issues, comments, and activity history with documented
-  credentials for development and review.
-- **Phase 18 — Mandatory testing:** Automated suites now cover authentication,
-  authorization, projects, issues, workflow, filtering, comments, activity,
-  dashboard, users, the error contract, seed idempotency, and the frontend role
-  policy — 52 server API tests and 7 client policy tests, all passing.
-- **Phase 20 — README completion:** Setup, API reference, permission model,
-  workflow, decisions, limitations, and screenshot documentation (this file).
-- **Phase 21 — Final review:** Requirement-by-requirement audit against the plan,
-  repository hygiene check, and verification of the server test suite, client
-  tests, production build, and seed idempotency.
+  caller.
+- The client dashboard shows the statistic cards and an **Assigned to you**
+  panel with loading, empty, error, and retry states — failures are surfaced,
+  never silently swallowed.
 
-### Mandatory implementation order
+## API Overview
 
-| Order | Phase | Scope | Status |
-| --- | --- | --- | --- |
-| 4 | Authorization | Role-action policy and project-membership authorization enforced on the server | Complete — 403 tests for role and project access |
-| 5 | Project management | Project CRUD, member management, unique-key and access validation | Complete — CRUD, members, duplicate-key, and access tests |
-| 6 | Issue management | Issue CRUD, assignment/reassignment, project and assignee validation | Complete — CRUD, assign, reassign, and validation tests |
-| 7 | Status workflow | Explicit transition map and activity creation for status changes | Complete — transition-map and invalid-transition tests |
-| 8 | Search and filtering | Server-side issue search and filters by project, status, priority, severity, reporter, and assignee | Complete — search and filter tests |
-| 9 | Comments | Authorized issue comments with content, author, and timestamps | Complete — create, author, timestamp, newest-first, and access tests |
-| 10 | Activity history | Activity API for creation, status, assignee, severity, and priority changes | Complete — field-change and access tests |
-| 11 | Dashboard API | Access-scoped issue statistics and assigned-issue data | Complete — statistics and scoping tests |
-| 12 | Frontend foundation | React routes, authentication state, route protection, and endpoint modules | Complete — all pages routed, auth context, route guard, API modules |
-| 13 | Core UI | Responsive dashboard, projects, issues, issue detail, comments, and create/edit flows | Complete — production client build passes |
-| 14 | UI states | Loading, empty, error, retry, and success feedback for API-driven screens | Complete — shared states applied across all screens |
-| 15 | Frontend authorization | Role-aware controls as UX, while retaining backend enforcement as the security boundary | Complete — membership and role gating across screens |
-| 16 | Error handling | Complete centralized API error mapping and consistent response/error contracts | Complete — single error contract enforced and tested |
-| 17 | Seed data | Demo users, projects, issues, comments, activities, and documented credentials | Complete — idempotent seed script and tests |
-| 18 | Mandatory testing | Authentication, authorization, CRUD, workflow, filtering, comments, dashboard, and UI-state tests | Complete — 52 API + 7 client tests passing |
-| 20 | README completion | Full setup, API, permissions, workflow, decisions, limitations, and screenshot documentation | Complete — this document |
-| 21 | Final review | Requirement-by-requirement audit, clean repository review, and setup verification | Complete — see Final Review |
-
-### Final review notes (Phase 21)
-
-- **Plan audit:** Each phase in the original implementation order (1–3 by the
-  initial scaffold, 4–18 and 20–21 here) maps to a delivered, tested item; no
-  mandatory phase is outstanding.
-- **Repository hygiene:** `node_modules/`, `dist/`, and `.env` files are ignored
-  and are not tracked; environment templates are documented in `.env.example`.
-- **Setup verification:** `server` `npm install` + `npm run check` + `npm test`
-  (52 pass) and `client` `npm install` + `npm test` (7 pass) + `npm run build`
-  (production build succeeds). Seed idempotency is verified by an automated test.
-- **Documented limitation:** screenshots (see below) are placeholders that should
-  be replaced with captures of the running UI.
-
-### Deferred bonus work
-
-Bonus work begins only after every mandatory phase above is verified:
-
-1. Activity timeline UI
-2. Kanban board using the same server-side status transition validation
-3. Pagination
-4. Sorting
-5. Additional automated API/component tests
-6. Attachments
-7. Notifications
-8. Docker and/or deployment
-
-### Delivery workflow
-
-Each phase is developed on a dedicated branch rather than `main`. Before the next
-phase begins, the phase is inspected, tested, recorded in this README, committed,
-pushed, opened as a pull request, and merged into `main`.
-
-## Authentication
-
-`POST /api/auth/register`, `POST /api/auth/login`, and `GET /api/auth/me` use
-bcryptjs password hashing and signed JWT bearer tokens. Password hashes are not
-selected by default or returned in API responses. Public registration accepts
-Developer and Tester accounts only; administrator accounts must be provisioned by
-a later controlled workflow or the development seed script.
-
-## Seed Data
-
-`npm run seed` (from `server/`) connects to `MONGODB_URI` and idempotently
-creates demo users, projects, issues, comments, and activity history. Every demo
-account uses the password `Password123!` (override with `SEED_PASSWORD`).
-
-| Role | Name | Email |
-| --- | --- | --- |
-| ADMIN | Ada Admin | admin@bugboard.dev |
-| DEVELOPER | Leo Lead | lead@bugboard.dev |
-| DEVELOPER | Dana Dev | dev@bugboard.dev |
-| TESTER | Tina Tester | tester@bugboard.dev |
-
-The seed creates the Web Platform (`WEB`), Mobile App (`MOB`), and Payments API
-(`PAY`) projects with issues in every status so the dashboard and role behavior
-can be reviewed immediately. Rerunning the script is safe and adds nothing new.
-
-## API Reference
-
-All routes are under `/api`. Every route except `/health`, `/auth/register`, and
-`/auth/login` requires a `Authorization: Bearer <token>` header. Responses use
-the envelope documented in [Error Contract](#error-contract).
+All routes are under `/api`. Every route except `/health`, `/auth/register`,
+and `/auth/login` requires an `Authorization: Bearer <token>` header. Responses
+use `{ "success": true, "data": { ... } }`; errors use
+`{ "success": false, "error": { "code", "message" } }`.
 
 | Area | Method | Path | Access | Description |
 | --- | --- | --- | --- | --- |
@@ -235,8 +181,8 @@ the envelope documented in [Error Contract](#error-contract).
 | Projects | PATCH | `/projects/:projectId` | ADMIN | Update name/key/description |
 | Projects | POST | `/projects/:projectId/members` | ADMIN | Add users to a project |
 | Projects | DELETE | `/projects/:projectId/members/:userId` | ADMIN | Remove a user from a project |
-| Users | GET | `/users` | ADMIN | List all users (no roles required for members screens) |
-| Issues | GET | `/issues` | member | List issues with search/filters |
+| Users | GET | `/users` | ADMIN | List all users |
+| Issues | GET | `/issues` | member | List issues; search/filters/sort/pagination |
 | Issues | POST | `/issues` | member | Create an issue (reporter is automatic) |
 | Issues | GET | `/issues/:issueId` | member | Issue detail |
 | Issues | PATCH | `/issues/:issueId` | role | Edit title/description/severity/priority |
@@ -246,82 +192,15 @@ the envelope documented in [Error Contract](#error-contract).
 | Issues | POST | `/issues/:issueId/comments` | member | Add a comment |
 | Issues | GET | `/issues/:issueId/activity` | member | Activity timeline |
 
-Issue filters on `GET /issues`: `search`, `project`, `status`, `priority`,
-`severity`, `reporter`, `assignee`.
+## Database Models
 
-## Permissions Model
-
-The server is the security boundary; the UI mirrors these rules to hide actions
-the user cannot perform.
-
-| Action | ADMIN | DEVELOPER (member) | TESTER (member) |
-| --- | --- | --- | --- |
-| Create/update projects, manage members | Yes | — | — |
-| View projects and issues | All | Their projects | Their projects |
-| Report issues | Any project | Projects they belong to | Projects they belong to |
-| Assign / reassign issues | Yes | Yes | — |
-| Edit issue details | Yes | Yes | Issues they reported |
-| Transition issue status | Yes | Yes | Issues they reported or are assigned to |
-| Comment on issues | Yes | Yes | Yes |
-| List users | Yes | — | — |
-
-## Status Workflow
-
-Statuses: `OPEN → IN_PROGRESS → TESTING → RESOLVED → CLOSED`, with two rollback
-edges. `CLOSED` is terminal.
-
-```
-OPEN ────▶ IN_PROGRESS ────▶ TESTING ────▶ RESOLVED ────▶ CLOSED
-                  ▲             │ ▲                     │
-                  └─────────────┘ └─────────────────────┘
-```
-
-Every transition is validated on the server and rejected with an
-`INVALID_STATUS_TRANSITION` error if the edge is not allowed. All transitions
-(and creation, assignment, and field edits) append an entry to the issue's
-activity history.
-
-## Error Contract
-
-Success responses use `{ "success": true, "data": { ... } }`. Errors always use
-`{ "success": false, "error": { "code": string, "message": string } }`.
-
-| HTTP | Code | Meaning |
-| --- | --- | --- |
-| 400 | `INVALID_JSON` | Request body is not valid JSON |
-| 400 | `INVALID_STATUS_TRANSITION`, `ISSUE_ALREADY_IN_STATUS`, `NO_CHANGES`, `NO_ASSIGNEE_CHANGE` | Business-rule conflicts |
-| 401 | `AUTHENTICATION_REQUIRED`, `INVALID_TOKEN`, `INVALID_CREDENTIALS` | Missing or invalid authentication |
-| 403 | `FORBIDDEN`, `PROJECT_ACCESS_DENIED` | Role or membership violation |
-| 404 | `NOT_FOUND`, `PROJECT_NOT_FOUND`, `ISSUE_NOT_FOUND`, `MEMBER_NOT_FOUND` | Missing resource or route |
-| 409 | `EMAIL_IN_USE`, `PROJECT_KEY_IN_USE`, `DUPLICATE` | Unique-key conflicts |
-| 422 | `VALIDATION_ERROR`, `INVALID_ASSIGNEE`, `ASSIGNEE_NOT_MEMBER`, `INVALID_MEMBER` | Invalid input |
-| 500 | `INTERNAL_SERVER_ERROR` | Unexpected failure |
-
-## Frontend Overview
-
-Routes: `/login`, `/register`, `/dashboard`, `/projects`, `/projects/:id`,
-`/issues`, `/issues/:id`, `/create-issue`. Authenticated routes are guarded by
-`AppLayout` (with a session-restore loading screen) and guest pages by
-`GuestRoute`. The shared Axios client attaches the JWT and redirects to `/login`
-on a 401. All API-driven screens provide loading, empty, error-with-retry, and
-success-acknowledgement states. Role and membership helpers in
-`client/src/utils/permissions.js` mirror the server policy so controls are
-hidden rather than merely rejected.
-
-## Database Design
-
-BugBoard uses five collections. `Project.members`, `Project.createdBy`,
-`Issue.project`, `Issue.reporter`, `Issue.assignee`, `Comment.issue`,
-`Comment.author`, `Activity.issue`, and `Activity.actor` are ObjectId references.
-Relationship and project-access rules are enforced by the service and
-authorization layers, with project membership validated on every project and
-issue operation.
+Five collections:
 
 | Collection | Main fields |
 | --- | --- |
 | User | name, email, passwordHash, role, timestamps |
 | Project | name, key, description, members, createdBy, timestamps |
-| Issue | project, title, description, severity, priority, status, reporter, assignee, timestamps |
+| Issue | project, title, description, severity, priority, status, reporter, assignee, priorityRank, severityRank, timestamps |
 | Comment | issue, author, content, timestamps |
 | Activity | issue, actor, action, field, oldValue, newValue, timestamp |
 
@@ -329,75 +208,214 @@ Enums: roles `ADMIN`/`DEVELOPER`/`TESTER`; severities `LOW`/`MEDIUM`/`HIGH`/
 `CRITICAL`; priorities `LOW`/`MEDIUM`/`HIGH`/`URGENT`; statuses `OPEN`/
 `IN_PROGRESS`/`TESTING`/`RESOLVED`/`CLOSED`.
 
+Priority and severity ranks (`1`–`4`) are derived automatically on save so the
+server can sort semantically without arbitrary string injection into queries.
+
 ## Indexing Decisions
 
-- User email and project key have unique indexes for identity and project lookup.
-- Issues have single-field indexes for common filters (project, status, priority,
-  severity, reporter, assignee, and created date), plus compound indexes for project
+- User email and Project key have unique indexes for identity and project lookup.
+- Issues have single-field indexes for the common filters (project, status,
+  priority, severity, reporter, assignee, created date), plus updatedAt and
+  priority/severity rank indexes for sort, and compound indexes for project
   status lists and a user's project assignments.
-- Comments and activities are indexed by issue and descending timestamp, matching
-  issue-detail timeline queries.
+- Comments and activities are indexed by issue and descending timestamp,
+  matching issue-detail timeline queries.
 
-## Design Decisions
+## Environment Variables
 
-- **Server-enforced authorization with mirrored UI:** every protected action is
-  re-validated server-side regardless of what the UI shows; the frontend only
-  hides actions that would be rejected.
-- **Explicit workflow state machine:** statuses are not free-form; a transition
-  map (including rollback edges) is enforced centrally, and every move is
-  recorded as activity.
-- **Project membership as the access unit:** visibility and actions for projects
-  and their issues are scoped by membership, with administrators exempt.
-- **Consistent error envelope:** a single error handler serializes every failure
-  to `{ success, error: { code, message } }` for predictable client handling.
-- **Stateless auth:** bcrypt-hashed passwords with signed, expiring JWTs; no
-  server-side session store.
-- **Idempotent seed + memory-backed tests:** ephemeral `mongodb-memory-server`
-  keeps tests dependent on no local database, and the seed script can be rerun
-  safely against real databases.
-- **Development-only JWT fallback:** a non-production default secret keeps local
-  runs functional; production requires an explicit `JWT_SECRET`.
+`server/.env.example`:
 
-## Limitations
+| Variable | Description |
+| --- | --- |
+| `NODE_ENV` | `development`, `test`, or `production` |
+| `PORT` | API port (default `5000`) |
+| `MONGODB_URI` | MongoDB connection string |
+| `JWT_SECRET` | Signing secret; required in production (dev/test fallback exists) |
+| `JWT_EXPIRES_IN` | Token lifetime (default `1d`) |
+| `CLIENT_ORIGIN` | Allowed frontend origin (default `http://localhost:5173`) |
 
-- No pagination or server-side sorting (single snapshot list per filter set).
-- No file attachments, notifications, or email delivery.
-- Public registration is restricted to Developer/Tester; administrators are
-  provisioned through the seed script or directly in the database.
-- No Docker image or deployment configuration yet (listed as bonus work).
-- `JWT_SECRET` must be set for production; the development fallback must not be
-  used there.
-- Screenshots below are placeholders pending manual capture.
-- A local or remote MongoDB instance is required to run the app (tests use
-  `mongodb-memory-server` instead).
+`client/.env.example`:
 
-## Screenshots
+| Variable | Description |
+| --- | --- |
+| `VITE_API_BASE_URL` | API base URL used by the client (default `/api`, proxied in dev) |
 
-Placeholder — replace with captured screenshots of the running UI in
-`docs/screenshots/`:
+## Installation
 
-- `dashboard.png` — dashboard statistics and assigned-issues panel
-- `projects.png` — project grid with create-form (admin view)
-- `project-detail.png` — project page with members and issue list
-- `issues.png` — issue list with search and filters
-- `issue-detail.png` — issue detail with workflow, comments, and activity
-- `login.png` — sign-in screen
+Prerequisites: Node.js 20+ and npm. MongoDB is optional — see below.
+
+```bash
+cd server
+npm install
+cd ../client
+npm install
+```
+
+## Running Locally
+
+### Option 1 — In-memory MongoDB (no database to install)
+
+The `mongodb-memory-server` launcher runs the full API against an ephemeral
+database, seeds it with demo data, and requires no `.env` file:
+
+```bash
+# Terminal 1 — API + seeded in-memory DB on http://localhost:5000
+cd server
+npm run dev:memory
+
+# Terminal 2 — UI on http://localhost:5173
+cd client
+npm run dev
+```
+
+### Option 2 — Local / hosted MongoDB
+
+```bash
+# Terminal 1 — Server
+cd server
+cp .env.example .env      # set MONGODB_URI and a real JWT_SECRET
+npm run seed              # optional: demo users, projects, issues, comments, activity
+npm run dev               # API on http://localhost:5000
+
+# Terminal 2 — Client
+cd client
+npm run dev               # UI on http://localhost:5173
+```
+
+Vite proxies `/api` to the server in development, so no CORS configuration is
+needed locally. `CLIENT_ORIGIN` controls the API's CORS allow-list.
+
+## Demo Accounts
+
+`npm run seed` (or the `dev:memory` launcher) idempotently creates demo users,
+projects, issues, comments, and activity history. Every demo account uses the
+password `Password123!` (override with `SEED_PASSWORD`).
+
+| Role | Name | Email |
+| --- | --- | --- |
+| ADMIN | Ada Admin | admin@bugboard.dev |
+| DEVELOPER | Leo Lead | lead@bugboard.dev |
+| DEVELOPER | Dana Dev | dev@bugboard.dev |
+| TESTER | Tina Tester | tester@bugboard.dev |
+
+The seed creates the Web Platform (`WEB`), Mobile App (`MOB`), and Payments API
+(`PAY`) projects with issues in every status so the dashboard, workflow, and
+role behavior can be reviewed immediately. Rerunning the seed adds nothing new.
 
 ## Testing
 
 ```bash
-# Server (tests run against mongodb-memory-server; no local DB required)
+# Server — tests run against mongodb-memory-server (no local DB required)
 cd server
 npm run check             # syntax check across source files
-npm test                  # 52 API tests
+npm test                  # API test suites
 
 # Client
 cd client
-npm test                  # 7 role-policy/label tests
+npm test                  # role-policy and issue-grouping tests
 npm run build             # production build verification
 ```
 
 Coverage includes authentication, authorization (role + project membership),
 project CRUD and member management, issue CRUD and assignment, the status
-workflow, search/filtering, comments, activity history, dashboard statistics,
-user listing, the error contract, seed idempotency, and the frontend role policy.
+workflow, search/filtering, sorting and pagination, comments, activity history,
+dashboard statistics, user listing, the error contract, seed idempotency, and
+the frontend role policy and issue grouping.
+
+## Production Build
+
+```bash
+cd client
+npm run build             # outputs to client/dist
+npm run preview           # serve the production build locally
+```
+
+The server should be started with a real `JWT_SECRET` set, `NODE_ENV=production`,
+and a production `MONGODB_URI`.
+
+## Design Decisions
+
+- **Server-enforced authorization with mirrored UI**: every protected action is
+  re-validated server-side; the frontend only hides actions that would be rejected.
+- **Explicit workflow state machine**: statuses are not free-form; a transition
+  map (including rollback edges) is enforced centrally and every move is
+  recorded as activity. The UI (list, detail, Kanban) only offers legal moves.
+- **Project membership as the access unit**: visibility and actions for projects
+  and their issues are scoped by membership, with administrators exempt.
+- **Consistent error envelope**: a single error handler serializes every failure
+  to `{ success, error: { code, message } }`.
+- **Backend as source of truth for Kanban**: the Kanban view calls the real
+  status API; a rejected transition is surfaced as an error and the UI stays in
+  sync with the server.
+- **Safe sorting/pagination**: sort keys are whitelisted and ranks are stored
+  numerically; pagination metadata rides alongside the stable issues contract.
+- **Stateless auth**: bcrypt-hashed passwords with signed, expiring JWTs.
+- **Idempotent seed + memory-backed tests**: ephemeral `mongodb-memory-server`
+  keeps tests independent of a local database, and `npm run dev:memory` provides
+  a zero-database local workflow.
+- **Development-only JWT fallback**: a non-production default secret keeps local
+  runs functional; production requires an explicit `JWT_SECRET`.
+
+## Bonus Features
+
+Implemented:
+
+- **Kanban board**: `List view | Kanban view` toggle on the issues page. Columns
+  for `Open`, `In Progress`, `Testing`, `Resolved`, `Closed`; cards show issue
+  key, title, priority, severity, and assignee. Cards are moved through a
+  `Move →` control listing only the server's allowed transitions; the backend
+  remains the source of truth and rejects invalid or unauthorized moves.
+- **Pagination**: server-side `page`/`limit` with `total`, `totalPages` metadata
+  and Previous/Next controls, backward-compatible with the non-paginated API.
+- **Sorting**: server-side `sort` (newest, oldest, updated, priority, severity)
+  with a client sort selector; sort keys are validated and never injected
+  directly.
+
+Deferred by design (see Limitations):
+
+- **Attachments / screenshots on issues**
+- **Notifications / email**
+- **Docker / deployment config**
+
+## Screenshots
+
+Captured from a real running instance with seeded data (`docs/screenshots/`):
+
+| Screenshot | Description |
+| --- | --- |
+| [landing.png](docs/screenshots/landing.png) | Public landing page at `/` |
+| [login.png](docs/screenshots/login.png) | Sign-in screen |
+| [dashboard.png](docs/screenshots/dashboard.png) | Dashboard statistics and assigned-issues panel |
+| [issues.png](docs/screenshots/issues.png) | Issue list with filters, sort, and view toggle |
+| [issue-detail.png](docs/screenshots/issue-detail.png) | Issue detail with workflow, comments, and activity |
+| [projects.png](docs/screenshots/projects.png) | Project grid (admin view) |
+
+To regenerate any screenshot, start the app (`npm run dev:memory` + `npm run dev`),
+sign in with a demo account, and capture the corresponding route.
+
+## Limitations
+
+- **Attachments** are intentionally omitted: production-safe object storage (not
+  local filesystem uploads) was outside the assignment's scope, so the feature is
+  documented rather than implemented unsafely.
+- **Notifications/email** are not implemented. No SMTP credentials are required
+  or configured; introducing email would need an environment-configured optional
+  provider.
+- **Docker/deployment** is not yet configured; local development continues to use
+  plain `npm` commands with a MongoDB connection or the in-memory launcher.
+- Public registration is restricted to Developer/Tester; administrators are
+  provisioned through the seed script or directly in the database.
+- `JWT_SECRET` must be set for production; the development fallback must not be
+  used there.
+- The in-memory database (`dev:memory` and the test suite) is ephemeral — data
+  is not persisted between runs.
+
+## Future Improvements
+
+- Drag-and-drop on the Kanban board (the current board is click-to-move; it
+  already calls the same server-validated transitions).
+- Attachments with object storage validation for type, size, and safe access.
+- In-app notifications and optionally email.
+- Docker images and `docker-compose.yml` for client, server, and MongoDB.
+- Deep-linkable filter presets and saved views.
+- Per-user notifications preferences and @mentions.

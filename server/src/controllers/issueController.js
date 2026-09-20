@@ -3,6 +3,7 @@ import { serializeIssue } from '../utils/serializers.js';
 import * as issueService from '../services/issueService.js';
 import {
   parseIssueFilters,
+  parseIssueListQuery,
   validateAssigneeChange,
   validateCreateIssue,
   validateStatusChange,
@@ -11,8 +12,9 @@ import {
 
 export const listIssues = asyncHandler(async (request, response) => {
   const filters = parseIssueFilters(request.query);
-  const issues = await issueService.listIssues(request.user, filters);
-  response.json({ success: true, data: { issues: issues.map(serializeIssue) } });
+  const list = parseIssueListQuery(request.query);
+  const { issues, pagination } = await issueService.listIssues(request.user, filters, list);
+  response.json({ success: true, data: { issues: issues.map(serializeIssue), pagination } });
 });
 
 export const getIssue = asyncHandler(async (request, response) => {

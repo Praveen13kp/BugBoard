@@ -44,7 +44,15 @@ async function loadIssue(conditions) {
     .populate('assignee', USER_FIELDS);
 }
 
-export async function listIssues(user, filters) {
+const SORT_SPECS = {
+  newest: { createdAt: -1 },
+  oldest: { createdAt: 1 },
+  updated: { updatedAt: -1 },
+  priority: { priorityRank: -1, updatedAt: -1 },
+  severity: { severityRank: -1, updatedAt: -1 },
+};
+
+export async function listIssues(user, filters, list = {}) {
   const query = await accessibleProjectCondition(user, filters.projectId);
 
   if (filters.status) query.status = filters.status;
@@ -57,7 +65,19 @@ export async function listIssues(user, filters) {
     query.$or = [{ title: pattern }, { description: pattern }];
   }
 
-  return issueQuery(query).sort({ updatedAt: -1 });
+  const sortSpec = SORT_SPECS[list.sort] || SORT_SPECS.updated;
+
+  if (list.paginate) {
+    const total = await Issue.countDocuments(query);
+    const issues = await issueQuery(query)
+      .sort(sortSpec)
+      .skip((list.page - 1) * list.limit)
+      .limit(list.limit);
+    return { issues, pagination: { page: list.page, limit: list.limit, total, totalPages: Math.ceil(total / list.limit) } };
+  }
+
+  const issues = await issueQuery(query).sort(sortSpec);
+  return { issues, pagination: null };
 }
 
 export async function getIssueForUser(user, issueId) {

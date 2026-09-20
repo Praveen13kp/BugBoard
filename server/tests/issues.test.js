@@ -271,4 +271,61 @@ describe('Issues', () => {
     const outsiderList = await request(app).get('/api/issues').set('Authorization', `Bearer ${outsiderToken}`);
     assert.ok(outsiderList.body.data.issues.every((item) => item.id !== issue.id));
   });
+
+  it('paginates issues without changing the default all-results response', async () => {
+    for (let index = 0; index < 5; index += 1) {
+      await createIssue(devToken, { title: `Boundary pagination issue ${index}` });
+    }
+
+    const firstPage = await request(app)
+      .get('/api/issues?page=1&limit=2')
+      .set('Authorization', `Bearer ${devToken}`);
+    assert.equal(firstPage.status, 200);
+    assert.equal(firstPage.body.data.issues.length, 2);
+    assert.deepEqual(firstPage.body.data.pagination, { page: 1, limit: 2, total: 5, totalPages: 3 });
+
+    const lastPage = await request(app)
+      .get('/api/issues?page=3&limit=2')
+      .set('Authorization', `Bearer ${devToken}`);
+    assert.equal(lastPage.body.data.issues.length, 1);
+    assert.equal(lastPage.body.data.pagination.page, 3);
+    assert.equal(lastPage.body.data.pagination.totalPages, 3);
+
+    const all = await request(app).get('/api/issues').set('Authorization', `Bearer ${devToken}`);
+    assert.equal(all.body.data.issues.length, 5);
+    assert.equal(all.body.data.pagination, null);
+  });
+
+  it('validates pagination and sort query parameters', async () => {
+    const badPage = await request(app).get('/api/issues?page=0').set('Authorization', `Bearer ${devToken}`);
+    assert.equal(badPage.status, 422);
+
+    const badLimit = await request(app).get('/api/issues?limit=101').set('Authorization', `Bearer ${devToken}`);
+    assert.equal(badLimit.status, 422);
+    assert.equal(badLimit.body.error.code, 'VALIDATION_ERROR');
+
+    const badSort = await request(app).get('/api/issues?sort=injected').set('Authorization', `Bearer ${devToken}`);
+    assert.equal(badSort.status, 422);
+    assert.equal(badSort.body.error.code, 'VALIDATION_ERROR');
+  });
+
+  it('sorts issues by severity and priority using server-side rank', async () => {
+    await createIssue(devToken, { title: 'Severity low', severity: 'LOW', priority: 'LOW' });
+    await createIssue(devToken, { title: 'Severity critical', severity: 'CRITICAL', priority: 'LOW' });
+    await createIssue(devToken, { title: 'Priority urgent', severity: 'LOW', priority: 'URGENT' });
+    await createIssue(devToken, { title: 'Severity high', severity: 'HIGH', priority: 'MEDIUM' });
+
+    const bySeverity = await request(app)
+      .get('/api/issues?sort=severity')
+      .set('Authorization', `Bearer ${devToken}`);
+    assert.equal(bySeverity.status, 200);
+    assert.equal(bySeverity.body.data.issues[0].title, 'Severity critical');
+    assert.equal(bySeverity.body.data.issues[1].title, 'Severity high');
+
+    const byPriority = await request(app)
+      .get('/api/issues?sort=priority')
+      .set('Authorization', `Bearer ${devToken}`);
+    assert.equal(byPriority.status, 200);
+    assert.equal(byPriority.body.data.issues[0].title, 'Priority urgent');
+  });
 });

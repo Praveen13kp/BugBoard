@@ -26,6 +26,14 @@ export const USER_ROLE_LABELS = {
   TESTER: 'Tester',
 };
 
+export const ISSUE_SORTS = [
+  { value: 'updated', label: 'Recently updated' },
+  { value: 'newest', label: 'Newest first' },
+  { value: 'oldest', label: 'Oldest first' },
+  { value: 'priority', label: 'Priority' },
+  { value: 'severity', label: 'Severity' },
+];
+
 export function formatDate(value) {
   if (!value) return '';
   const date = new Date(value);

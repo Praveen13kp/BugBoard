@@ -1,20 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { errorMessage } from '../api/error';
-import { apiListIssues } from '../api/issues';
+import { apiChangeStatus, apiListIssues } from '../api/issues';
 import { apiListProjects } from '../api/projects';
 import { apiListUsers } from '../api/users';
 import { useAuth } from '../context/AuthContext';
 import { canReportIssueForProject } from '../utils/permissions';
+import { ISSUE_SORTS } from '../utils/format';
 import EmptyState from '../components/common/EmptyState';
 import ErrorBox from '../components/common/ErrorBox';
 import FilterBar from '../components/issues/FilterBar';
 import IssueRow from '../components/issues/IssueRow';
+import KanbanBoard from '../components/issues/KanbanBoard';
 import Loading from '../components/common/Loading';
+
+const FILTER_KEYS = ['search', 'project', 'status', 'priority', 'severity', 'reporter', 'assignee'];
+const PAGE_SIZE = 20;
 
 function filtersFromParams(params) {
   const filters = {};
-  for (const key of ['search', 'project', 'status', 'priority', 'severity', 'reporter', 'assignee']) {
+  for (const key of FILTER_KEYS) {
     const value = params.get(key);
     if (value) filters[key] = value;
   }
@@ -25,11 +30,18 @@ export default function IssuesPage() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState(() => filtersFromParams(searchParams));
+  const [page, setPage] = useState(() => Number(searchParams.get('page')) || 1);
+  const [sort, setSort] = useState(() => searchParams.get('sort') || 'updated');
+  const [viewMode, setViewMode] = useState(() => (searchParams.get('view') === 'kanban' ? 'kanban' : 'list'));
+  const [refreshKey, setRefreshKey] = useState(0);
   const [issues, setIssues] = useState([]);
+  const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [users, setUsers] = useState([]);
   const [canReport, setCanReport] = useState(false);
+  const [movingId, setMovingId] = useState(null);
+  const [moveError, setMoveError] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -63,14 +75,30 @@ export default function IssuesPage() {
     for (const [key, value] of Object.entries(filters)) {
       if (value) params.set(key, value);
     }
+    if (viewMode === 'list') {
+      params.set('page', String(page));
+      params.set('sort', sort);
+    } else {
+      params.set('view', 'kanban');
+    }
     setSearchParams(params, { replace: true });
 
     let active = true;
     setLoading(true);
     setError('');
-    apiListIssues(filters)
-      .then(({ issues: list }) => {
-        if (active) setIssues(list);
+    setMoveError('');
+
+    const request =
+      viewMode === 'list'
+        ? apiListIssues({ ...filters, page, limit: PAGE_SIZE, sort })
+        : apiListIssues(filters);
+
+    request
+      .then(({ issues: list, pagination: pageInfo }) => {
+        if (active) {
+          setIssues(list);
+          setPagination(pageInfo);
+        }
       })
       .catch((loadError) => {
         if (active) setError(errorMessage(loadError, 'Unable to load issues.'));
@@ -81,7 +109,7 @@ export default function IssuesPage() {
     return () => {
       active = false;
     };
-  }, [filters, setSearchParams]);
+  }, [filters, page, sort, viewMode, refreshKey, setSearchParams]);
 
   const peopleInResults = useMemo(() => {
     const map = new Map();
@@ -94,6 +122,31 @@ export default function IssuesPage() {
   }, [issues]);
 
   const filterUsers = users.length ? users : peopleInResults;
+
+  function handleFilterChange(nextFilters) {
+    setFilters(nextFilters);
+    setPage(1);
+    setRefreshKey((key) => key + 1);
+  }
+
+  function handleSortChange(nextSort) {
+    setSort(nextSort);
+    setPage(1);
+  }
+
+  async function handleMove(issue, nextStatus) {
+    if (!nextStatus) return;
+    setMoveError('');
+    setMovingId(issue.id);
+    try {
+      const { issue: updated } = await apiChangeStatus(issue.id, nextStatus);
+      setIssues((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    } catch (moveFailure) {
+      setMoveError(errorMessage(moveFailure, 'Unable to move the issue.'));
+    } finally {
+      setMovingId(null);
+    }
+  }
 
   return (
     <div className="page">
@@ -109,30 +162,106 @@ export default function IssuesPage() {
         )}
       </section>
 
-      <FilterBar value={filters} onChange={setFilters} users={filterUsers} />
+      <FilterBar value={filters} onChange={handleFilterChange} users={filterUsers} />
+
+      <div className="issue-toolbar">
+        <div className="view-toggle" role="group" aria-label="View mode">
+          <button
+            type="button"
+            className={viewMode === 'list' ? 'is-active' : ''}
+            aria-pressed={viewMode === 'list'}
+            onClick={() => {
+              setViewMode('list');
+              setMoveError('');
+            }}
+          >
+            List view
+          </button>
+          <button
+            type="button"
+            className={viewMode === 'kanban' ? 'is-active' : ''}
+            aria-pressed={viewMode === 'kanban'}
+            onClick={() => {
+              setViewMode('kanban');
+              setMoveError('');
+            }}
+          >
+            Kanban view
+          </button>
+        </div>
+        {viewMode === 'list' && (
+          <select
+            className="input"
+            value={sort}
+            onChange={(event) => handleSortChange(event.target.value)}
+            aria-label="Sort issues"
+          >
+            {ISSUE_SORTS.map((option) => (
+              <option key={option.value} value={option.value}>
+                Sort: {option.label}
+              </option>
+            ))}
+          </select>
+        )}
+        {viewMode === 'list' && pagination?.total !== undefined && (
+          <span className="issue-toolbar-total muted">Showing {issues.length} of {pagination.total}</span>
+        )}
+      </div>
 
       {error ? (
-        <ErrorBox message={error} onRetry={() => setFilters({ ...filters })} />
+        <ErrorBox message={error} onRetry={() => setRefreshKey((key) => key + 1)} />
       ) : loading ? (
         <Loading text="Loading issues..." />
       ) : issues.length === 0 ? (
-        <EmptyState
-          title="No issues found"
-          message="Try changing your filters, or create a new issue."
-          children={
-            canReport ? (
-              <Link to="/create-issue" className="btn btn--primary">
-                Create issue
-              </Link>
-            ) : undefined
-          }
-        />
+        <>
+          {moveError && <ErrorBox title="Unable to move the issue" message={moveError} />}
+          <EmptyState
+            title="No issues found"
+            message="Try changing your filters, or create a new issue."
+            children={
+              canReport ? (
+                <Link to="/create-issue" className="btn btn--primary">
+                  Create issue
+                </Link>
+              ) : undefined
+            }
+          />
+        </>
+      ) : viewMode === 'kanban' ? (
+        <>
+          {moveError && <ErrorBox title="Unable to move the issue" message={moveError} />}
+          <KanbanBoard issues={issues} onMove={handleMove} movingId={movingId} />
+        </>
       ) : (
         <div className="issue-list">
           {issues.map((issue) => (
             <IssueRow key={issue.id} issue={issue} />
           ))}
         </div>
+      )}
+
+      {viewMode === 'list' && !error && !loading && pagination && pagination.totalPages > 1 && (
+        <nav className="pagination" aria-label="Issues pagination">
+          <button
+            type="button"
+            className="btn"
+            disabled={page <= 1}
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+          >
+            Previous
+          </button>
+          <span className="page-info">
+            Page {pagination.page} of {pagination.totalPages}
+          </span>
+          <button
+            type="button"
+            className="btn"
+            disabled={page >= pagination.totalPages}
+            onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
+          >
+            Next
+          </button>
+        </nav>
       )}
     </div>
   );

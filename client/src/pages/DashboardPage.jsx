@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const [error, setError] = useState('');
   const [myIssues, setMyIssues] = useState([]);
   const [myIssuesLoading, setMyIssuesLoading] = useState(true);
+  const [myIssuesError, setMyIssuesError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -34,13 +35,17 @@ export default function DashboardPage() {
     load();
   }, [load]);
 
-  useEffect(() => {
+  const loadMyIssues = useCallback(() => {
     let active = true;
+    setMyIssuesLoading(true);
+    setMyIssuesError('');
     apiListIssues({ assignee: user.id })
       .then(({ issues }) => {
         if (active) setMyIssues(issues.slice(0, 5));
       })
-      .catch(() => {})
+      .catch((assignedError) => {
+        if (active) setMyIssuesError(errorMessage(assignedError, 'Unable to load assigned issues.'));
+      })
       .finally(() => {
         if (active) setMyIssuesLoading(false);
       });
@@ -48,6 +53,8 @@ export default function DashboardPage() {
       active = false;
     };
   }, [user.id]);
+
+  useEffect(() => loadMyIssues(), [loadMyIssues]);
 
   return (
     <div className="page">
@@ -80,6 +87,8 @@ export default function DashboardPage() {
         </div>
         {myIssuesLoading ? (
           <Loading text="Loading your issues..." />
+        ) : myIssuesError ? (
+          <ErrorBox title="Unable to load assigned issues" message={myIssuesError} onRetry={loadMyIssues} />
         ) : myIssues.length === 0 ? (
           <p className="muted">No issues are assigned to you right now.</p>
         ) : (
