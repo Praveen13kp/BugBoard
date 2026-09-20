@@ -59,3 +59,38 @@ export function parseIssueFilters(query = {}) {
 
   return filters;
 }
+
+export const ISSUE_SORTS = ['newest', 'oldest', 'updated', 'priority', 'severity'];
+
+const MAX_ISSUE_LIMIT = 100;
+
+export function parseIssueListQuery(query = {}) {
+  const wantsPagination = query.page !== undefined || query.limit !== undefined;
+
+  let page = 1;
+  let limit = wantsPagination ? 20 : null;
+
+  if (query.page !== undefined) {
+    page = Number(query.page);
+    if (!Number.isInteger(page) || page < 1) {
+      throw new AppError('page must be a positive integer.', 422, 'VALIDATION_ERROR');
+    }
+  }
+
+  if (query.limit !== undefined) {
+    limit = Number(query.limit);
+    if (!Number.isInteger(limit) || limit < 1 || limit > MAX_ISSUE_LIMIT) {
+      throw new AppError(`limit must be an integer between 1 and ${MAX_ISSUE_LIMIT}.`, 422, 'VALIDATION_ERROR');
+    }
+  }
+
+  let sort = 'updated';
+  if (query.sort !== undefined) {
+    if (!ISSUE_SORTS.includes(query.sort)) {
+      throw new AppError(`sort must be one of: ${ISSUE_SORTS.join(', ')}.`, 422, 'VALIDATION_ERROR');
+    }
+    sort = query.sort;
+  }
+
+  return { paginate: wantsPagination, page, limit, sort };
+}
