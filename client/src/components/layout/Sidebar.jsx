@@ -14,8 +14,8 @@ export default function Sidebar({ open, onClose }) {
   const navigate = useNavigate();
 
   function handleLogout() {
+    navigate('/', { replace: true });
     logout();
-    navigate('/');
   }
 
   return (

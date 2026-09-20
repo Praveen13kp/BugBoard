@@ -38,12 +38,13 @@ export default function KanbanBoard({ issues, onMove, movingId }) {
     event.preventDefault();
     if (!drag) return;
     const issue = drag.issue;
+    const canMove = (issue.allowedStatusTransitions || []).includes(status);
     setDrag(null);
-    onMove(issue, status);
+    if (canMove) onMove(issue, status);
   }
 
   return (
-    <div className="kanban">
+    <div className="kanban" aria-label="Issue board. Drag an issue card to a permitted status column to move it.">
       {ISSUE_STATUS_ORDER.map((status) => {
         const columnIssues = groups.get(status) || [];
         const isTarget = drag?.target === status;
@@ -73,7 +74,6 @@ export default function KanbanBoard({ issues, onMove, movingId }) {
                 <KanbanCard
                   key={issue.id}
                   issue={issue}
-                  onMove={onMove}
                   moving={movingId === issue.id}
                   dragging={drag?.issue?.id === issue.id}
                   onDragStart={() => startDrag(issue)}
@@ -88,7 +88,7 @@ export default function KanbanBoard({ issues, onMove, movingId }) {
   );
 }
 
-function KanbanCard({ issue, onMove, moving, dragging, onDragStart, onDragEnd }) {
+function KanbanCard({ issue, moving, dragging, onDragStart, onDragEnd }) {
   const statusClass = slug(issue.status);
   const className = [
     'kanban-card',
@@ -134,7 +134,7 @@ function KanbanCard({ issue, onMove, moving, dragging, onDragStart, onDragEnd })
             <span className="subtle">Unassigned</span>
           )}
         </span>
-        <MoveControl issue={issue} onMove={onMove} disabled={moving || dragging} />
+        <span className="kanban-drag-hint">Drag to move</span>
       </footer>
     </article>
   );

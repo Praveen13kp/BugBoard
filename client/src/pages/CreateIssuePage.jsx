@@ -119,13 +119,17 @@ export default function CreateIssuePage() {
         </div>
       </section>
 
-      <form className="panel" onSubmit={handleSubmit}>
+      <form className="panel create-issue-form" onSubmit={handleSubmit}>
         {error && <div className="alert alert--error">{error}</div>}
 
-        <fieldset className="form-section">
-          <legend className="form-section-title">
-            <span className="form-section-number">1</span> Target
-          </legend>
+        <section className="form-section" aria-labelledby="issue-target-title">
+          <div className="form-section-header">
+            <span className="form-section-number" aria-hidden="true">1</span>
+            <div>
+              <h3 className="form-section-title" id="issue-target-title">Target</h3>
+              <p className="form-section-description">Where should this issue live?</p>
+            </div>
+          </div>
           <div className="form-grid">
             <label className="field">
               <span className="field-label">
@@ -171,12 +175,16 @@ export default function CreateIssuePage() {
               </select>
             </label>
           </div>
-        </fieldset>
+        </section>
 
-        <fieldset className="form-section">
-          <legend className="form-section-title">
-            <span className="form-section-number">2</span> Issue details
-          </legend>
+        <section className="form-section" aria-labelledby="issue-details-title">
+          <div className="form-section-header">
+            <span className="form-section-number" aria-hidden="true">2</span>
+            <div>
+              <h3 className="form-section-title" id="issue-details-title">Issue details</h3>
+              <p className="form-section-description">Describe the problem and how to reproduce it.</p>
+            </div>
+          </div>
           <label className="field">
             <span className="field-label">
               <FilePlus size={14} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 6 }} />
@@ -203,12 +211,16 @@ export default function CreateIssuePage() {
               placeholder="Steps to reproduce, expected versus actual result, environment details..."
             />
           </label>
-        </fieldset>
+        </section>
 
-        <fieldset className="form-section">
-          <legend className="form-section-title">
-            <span className="form-section-number">3</span> Classification
-          </legend>
+        <section className="form-section" aria-labelledby="issue-classification-title">
+          <div className="form-section-header">
+            <span className="form-section-number" aria-hidden="true">3</span>
+            <div>
+              <h3 className="form-section-title" id="issue-classification-title">Classification</h3>
+              <p className="form-section-description">Set the impact and urgency for the team.</p>
+            </div>
+          </div>
           <div className="form-grid">
             <label className="field">
               <span className="field-label">
@@ -237,7 +249,7 @@ export default function CreateIssuePage() {
               </select>
             </label>
           </div>
-        </fieldset>
+        </section>
 
         <div className="form-actions form-actions--sticky">
           <span className="muted form-actions-note">

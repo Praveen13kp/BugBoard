@@ -375,6 +375,13 @@ body::before {
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
+  min-width: 0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
 }
 
 .field-label {
@@ -1500,6 +1507,14 @@ textarea.input {
   color: var(--text-muted);
 }
 
+.kanban-drag-hint {
+  flex: 0 0 auto;
+  color: var(--text-subtle);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .kanban-move {
   width: auto;
   min-width: 96px;
@@ -2039,6 +2054,7 @@ textarea.input {
   align-items: center;
   justify-content: center;
   padding: var(--sp-10);
+  min-width: 0;
   background:
     radial-gradient(560px 300px at 100% -6%, rgba(99, 102, 241, 0.07), transparent 60%),
     var(--bg-elevated);
@@ -2047,6 +2063,7 @@ textarea.input {
 .auth-card {
   width: 100%;
   max-width: 400px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--sp-5);
@@ -2083,7 +2100,7 @@ textarea.input {
 .auth-role-field {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-2);
+  gap: var(--sp-3);
 }
 
 .role-option {
@@ -2096,6 +2113,7 @@ textarea.input {
   border-radius: var(--radius-md);
   background: var(--bg-elevated);
   cursor: pointer;
+  min-width: 0;
   transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 
@@ -2124,6 +2142,7 @@ textarea.input {
   display: flex;
   flex-direction: column;
   line-height: 1.3;
+  min-width: 0;
 }
 
 .role-option-text strong {
@@ -2134,6 +2153,7 @@ textarea.input {
 .role-option-text span {
   font-size: var(--text-xs);
   color: var(--text-subtle);
+  overflow-wrap: anywhere;
 }
 
 /* ----------------------------------------------------------------------------
@@ -2306,6 +2326,17 @@ textarea.input {
   border-radius: 2px;
   background: var(--text-muted);
   transition: transform var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+
+@media (min-width: 561px) {
+  .landing-nav-links,
+  .landing-nav-actions {
+    display: flex;
+  }
+
+  .landing-menu-toggle {
+    display: none;
+  }
 }
 
 .landing-nav--open .landing-menu-toggle span:nth-child(1) {
@@ -2789,6 +2820,7 @@ textarea.input {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--sp-5);
   margin-top: var(--sp-12);
+  align-items: stretch;
 }
 
 .role-card {
@@ -2796,11 +2828,12 @@ textarea.input {
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
-  padding: var(--sp-7);
+  padding: var(--sp-8);
   border-radius: var(--radius-lg);
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
+  min-width: 0;
 }
 
 .role-card--featured {
@@ -2841,6 +2874,7 @@ textarea.input {
   font-size: var(--text-xl);
   font-weight: 600;
   letter-spacing: var(--tracking-tight);
+  overflow-wrap: anywhere;
 }
 
 .role-card ul {
@@ -2857,6 +2891,7 @@ textarea.input {
   font-size: var(--text-sm);
   color: var(--text-muted);
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .role-card li::before {
@@ -2871,6 +2906,14 @@ textarea.input {
 
 .role-card--featured li::before {
   background: var(--brand-500);
+}
+
+@media (max-width: 1120px) {
+  .role-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-4);
+  }
+
 }
 
 /* Benefits */
@@ -3676,6 +3719,18 @@ textarea.input {
 }
 
 @media (max-width: 560px) {
+  .auth-panel {
+    padding: var(--sp-8) var(--sp-4);
+  }
+
+  .auth-role-field {
+    flex-direction: column;
+  }
+
+  .role-option {
+    flex-basis: auto;
+  }
+
   .landing-nav {
     grid-template-columns: auto 1fr auto;
   }
@@ -3807,7 +3862,14 @@ textarea.input {
 /* ----------------------------------------------------------------------------
    28. Extended: form sections, project cards, misc additions
    ---------------------------------------------------------------------------- */
+.create-issue-form {
+  padding: var(--sp-8);
+}
+
 .form-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
   border: 0;
   margin: 0;
   padding: 0 0 var(--sp-8);
@@ -3819,20 +3881,29 @@ textarea.input {
   padding-top: var(--sp-7);
 }
 
-.form-section-title {
+.form-section-header {
   display: flex;
-  align-items: center;
-  gap: var(--sp-2);
+  align-items: flex-start;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.form-section-title {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1.05rem;
   color: var(--text);
   padding: 0;
-  margin-bottom: var(--sp-5);
-  width: 100%;
+}
+
+.form-section-description {
+  margin-top: var(--sp-1);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
 }
 
 .form-section-number {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3862,6 +3933,10 @@ textarea.input {
 }
 
 @media (max-width: 768px) {
+  .create-issue-form {
+    padding: var(--sp-5);
+  }
+
   .form-actions--sticky {
     flex-direction: column;
     align-items: stretch;
