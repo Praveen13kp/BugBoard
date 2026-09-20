@@ -30,28 +30,51 @@ export default function KanbanBoard({ issues, onMove, movingId }) {
             <div className="kanban-column-body">
               {columnIssues.length === 0 && <p className="kanban-empty">No issues</p>}
               {columnIssues.map((issue) => (
-                <article key={issue.id} className="kanban-card">
-                  <Link className="kanban-card-link" to={`/issues/${issue.id}`}>
-                    <span className="issue-key">
-                      {issue.project?.key || '?'}-{issue.id.slice(0, 6)}
-                    </span>
-                    <h4>{issue.title}</h4>
-                  </Link>
-                  <div className="kanban-card-row">
-                    <Badge kind="priority" value={issue.priority} />
-                    <Badge kind="severity" value={issue.severity} />
-                  </div>
-                  <footer className="kanban-card-foot">
-                    <span className="kanban-assignee">{personName(issue.assignee)}</span>
-                    <MoveControl issue={issue} onMove={onMove} disabled={movingId === issue.id} />
-                  </footer>
-                </article>
+                <KanbanCard
+                  key={issue.id}
+                  issue={issue}
+                  onMove={onMove}
+                  moving={movingId === issue.id}
+                />
               ))}
             </div>
           </section>
         );
       })}
     </div>
+  );
+}
+
+function KanbanCard({ issue, onMove, moving }) {
+  const statusClass = slug(issue.status);
+  return (
+    <article className={`kanban-card kanban-card--${statusClass}${moving ? ' is-moving' : ''}`}>
+      <span className="issue-key mono">
+        {issue.project?.key || '?'}-{issue.id.slice(0, 6)}
+      </span>
+      <Link to={`/issues/${issue.id}`} className="kanban-card-title">
+        {issue.title}
+      </Link>
+      <div className="kanban-card-row">
+        <Badge kind="priority" value={issue.priority} />
+        <Badge kind="severity" value={issue.severity} />
+      </div>
+      <footer className="kanban-card-foot">
+        <span className="kanban-assignee">
+          {issue.assignee ? (
+            <>
+              <span className="avatar avatar--xs" aria-hidden="true">
+                {personName(issue.assignee).charAt(0).toUpperCase()}
+              </span>
+              {personName(issue.assignee)}
+            </>
+          ) : (
+            <span className="subtle">Unassigned</span>
+          )}
+        </span>
+        <MoveControl issue={issue} onMove={onMove} disabled={moving} />
+      </footer>
+    </article>
   );
 }
 

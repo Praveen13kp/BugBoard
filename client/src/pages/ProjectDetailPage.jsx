@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { Bug, FolderKanban, Plus, UserMinus, UserPlus, Users } from 'lucide-react';
 import { errorMessage } from '../api/error';
 import { apiAddMembers, apiGetProject, apiRemoveMember } from '../api/projects';
 import { apiListIssues } from '../api/issues';
@@ -10,12 +11,13 @@ import { canManageProjects, canReportIssueForProject } from '../utils/permission
 import ErrorBox from '../components/common/ErrorBox';
 import EmptyState from '../components/common/EmptyState';
 import IssueRow from '../components/issues/IssueRow';
-import Loading from '../components/common/Loading';
-import SuccessBox from '../components/common/SuccessBox';
+import ProjectDetailSkeleton from '../components/projects/ProjectDetailSkeleton';
+import { useToast } from '../components/common/Toast';
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams();
   const { user } = useAuth();
+  const toast = useToast();
   const isAdmin = canManageProjects(user.role);
   const [project, setProject] = useState(null);
   const [issues, setIssues] = useState([]);
@@ -24,7 +26,6 @@ export default function ProjectDetailPage() {
   const [error, setError] = useState('');
   const [selectedUser, setSelectedUser] = useState('');
   const [actionError, setActionError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -54,31 +55,29 @@ export default function ProjectDetailPage() {
     event.preventDefault();
     if (!selectedUser) return;
     setActionError('');
-    setSuccessMessage('');
     try {
       const { project: nextProject } = await apiAddMembers(projectId, [selectedUser]);
       setProject(nextProject);
       setSelectedUser('');
-      setSuccessMessage('Member added.');
+      toast.success('Member added', 'The user can now access this project.');
     } catch (addError) {
       setActionError(errorMessage(addError, 'Unable to add the member.'));
     }
   }
 
-  async function handleRemoveMember(userId) {
+  async function handleRemoveMember(memberId) {
     setActionError('');
-    setSuccessMessage('');
     try {
-      const { project: nextProject } = await apiRemoveMember(projectId, userId);
+      const { project: nextProject } = await apiRemoveMember(projectId, memberId);
       setProject(nextProject);
-      setSuccessMessage('Member removed.');
+      toast.success('Member removed', 'The user no longer has access to this project.');
     } catch (removeError) {
       setActionError(errorMessage(removeError, 'Unable to remove the member.'));
     }
   }
 
-  if (error) return <ErrorBox message={error} onRetry={load} />;
-  if (loading || !project) return <Loading text="Loading project..." />;
+  if (error) return <div className="page"><ErrorBox message={error} onRetry={load} /></div>;
+  if (loading || !project) return <ProjectDetailSkeleton />;
 
   const memberIds = new Set(project.members.map((member) => member.id));
   const availableUsers = users.filter((candidate) => !memberIds.has(candidate.id));
@@ -87,23 +86,30 @@ export default function ProjectDetailPage() {
   return (
     <div className="page">
       <section className="page-heading">
-        <p className="eyebrow">{project.key}</p>
+        <p className="eyebrow">
+          <FolderKanban size={15} aria-hidden="true" style={{ verticalAlign: -3, marginRight: 6 }} />
+          {project.key}
+        </p>
         <h2>{project.name}</h2>
         <p className="muted">{project.description || 'No description provided.'}</p>
       </section>
 
       {actionError && <div className="alert alert--error">{actionError}</div>}
-      <SuccessBox message={successMessage} onDismiss={() => setSuccessMessage('')} />
 
       {isAdmin && (
         <section className="panel">
-          <h3>Add member</h3>
+          <div className="section-heading section-heading--compact">
+            <h3>Add member</h3>
+          </div>
           <form className="form-row" onSubmit={handleAddMember}>
+            <label className="sr-only" htmlFor="project-member-select">
+              Choose a user to add
+            </label>
             <select
+              id="project-member-select"
               className="input"
               value={selectedUser}
               onChange={(event) => setSelectedUser(event.target.value)}
-              aria-label="Choose a user to add"
             >
               <option value="">Choose a user...</option>
               {availableUsers.map((candidate) => (
@@ -113,7 +119,7 @@ export default function ProjectDetailPage() {
               ))}
             </select>
             <button type="submit" className="btn btn--primary" disabled={!selectedUser}>
-              Add
+              <UserPlus size={16} aria-hidden="true" /> Add
             </button>
           </form>
         </section>
@@ -121,7 +127,10 @@ export default function ProjectDetailPage() {
 
       <section className="section">
         <div className="section-heading">
-          <h3>Members ({project.memberCount})</h3>
+          <h3>
+            <Users size={18} aria-hidden="true" style={{ verticalAlign: -3, marginRight: 6 }} />
+            Members ({project.memberCount})
+          </h3>
         </div>
         {project.members.length === 0 ? (
           <p className="muted">No members yet.</p>
@@ -137,8 +146,12 @@ export default function ProjectDetailPage() {
                   <span className="muted">{USER_ROLE_LABELS[member.role] || member.role}</span>
                 </span>
                 {isAdmin && member.id !== user.id && (
-                  <button type="button" className="btn btn--danger btn--small" onClick={() => handleRemoveMember(member.id)}>
-                    Remove
+                  <button
+                    type="button"
+                    className="btn btn--danger btn--small"
+                    onClick={() => handleRemoveMember(member.id)}
+                  >
+                    <UserMinus size={14} aria-hidden="true" /> Remove
                   </button>
                 )}
               </li>
@@ -149,10 +162,13 @@ export default function ProjectDetailPage() {
 
       <section className="section">
         <div className="section-heading">
-          <h3>Issues ({issues.length})</h3>
+          <h3>
+            <Bug size={18} aria-hidden="true" style={{ verticalAlign: -3, marginRight: 6 }} />
+            Issues ({issues.length})
+          </h3>
           {canReport && (
-            <Link className="link" to={`/create-issue?project=${projectId}`}>
-              Report an issue
+            <Link className="btn btn--secondary" to={`/create-issue?project=${projectId}`}>
+              <Plus size={16} aria-hidden="true" /> Report an issue
             </Link>
           )}
         </div>

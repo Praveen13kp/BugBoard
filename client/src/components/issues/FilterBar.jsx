@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Search } from 'lucide-react';
 import { apiListProjects } from '../../api/projects';
 import { PRIORITY_LABELS, SEVERITY_LABELS, STATUS_LABELS } from '../../utils/format';
 
@@ -23,13 +24,17 @@ export default function FilterBar({ value, onChange, users }) {
 
   return (
     <div className="filter-bar">
-      <input
-        className="input"
-        type="search"
-        placeholder="Search issues..."
-        value={value.search || ''}
-        onChange={(event) => update('search', event.target.value)}
-      />
+      <div className="input-field">
+        <Search className="input-icon" size={16} aria-hidden="true" />
+        <input
+          className="input"
+          type="search"
+          placeholder="Search issues..."
+          aria-label="Search issues"
+          value={value.search || ''}
+          onChange={(event) => update('search', event.target.value)}
+        />
+      </div>
       <select
         className="input"
         value={value.project || ''}

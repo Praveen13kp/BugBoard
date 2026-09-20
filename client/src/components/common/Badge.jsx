@@ -12,9 +12,12 @@ function slug(value) {
     .replace(/[^a-z0-9]+/g, '-');
 }
 
-export default function Badge({ kind, value }) {
-  const label = LABEL_MAP[kind]?.[value] || value || '—';
+export default function Badge({ kind, value, label }) {
+  const labelText = label || LABEL_MAP[kind]?.[value] || value || '—';
   return (
-    <span className={['badge', `badge--${kind}`, `badge--${slug(value)}`].join(' ')}>{label}</span>
+    <span className={['badge', `badge--${kind}`, `badge--${slug(value)}`].join(' ')}>
+      <span className="badge-dot" aria-hidden="true" />
+      {labelText}
+    </span>
   );
 }
