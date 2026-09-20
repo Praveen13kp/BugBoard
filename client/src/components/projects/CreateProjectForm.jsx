@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FolderPlus } from 'lucide-react';
 import { errorMessage } from '../../api/error';
 import { apiCreateProject } from '../../api/projects';
+import { useToast } from '../common/Toast';
 
-export default function CreateProjectForm({ onCreated }) {
+export default function CreateProjectForm({ onCreated, onClose }) {
   const navigate = useNavigate();
+  const toast = useToast();
   const [name, setName] = useState('');
   const [key, setKey] = useState('');
   const [description, setDescription] = useState('');
@@ -19,7 +22,9 @@ export default function CreateProjectForm({ onCreated }) {
       const { project } = await apiCreateProject({ name, key, description });
       setSubmitting(false);
       onCreated();
-      navigate(`/projects/${project.id}`, { state: { success: 'Project created.' } });
+      onClose?.();
+      toast.success('Project created', `${project.name} is ready for your team.`);
+      navigate(`/projects/${project.id}`);
     } catch (submitError) {
       setError(errorMessage(submitError, 'Unable to create the project.'));
       setSubmitting(false);
@@ -27,7 +32,7 @@ export default function CreateProjectForm({ onCreated }) {
   }
 
   return (
-    <form className="panel" onSubmit={handleSubmit}>
+    <form className="form" onSubmit={handleSubmit}>
       {error && <div className="alert alert--error">{error}</div>}
       <div className="form-grid">
         <label className="field">
@@ -52,6 +57,7 @@ export default function CreateProjectForm({ onCreated }) {
             onChange={(event) => setKey(event.target.value.toUpperCase())}
             placeholder="WEB"
           />
+          <span className="field-hint">A short code for issue keys, e.g. WEB-1234.</span>
         </label>
       </div>
       <label className="field">
@@ -65,8 +71,19 @@ export default function CreateProjectForm({ onCreated }) {
         />
       </label>
       <div className="form-actions">
+        <button type="button" className="btn btn--ghost" onClick={onClose}>
+          Cancel
+        </button>
         <button type="submit" className="btn btn--primary" disabled={submitting}>
-          {submitting ? 'Creating...' : 'Create project'}
+          {submitting ? (
+            <>
+              <span className="btn-spinner" aria-hidden="true" /> Creating...
+            </>
+          ) : (
+            <>
+              <FolderPlus size={17} aria-hidden="true" /> Create project
+            </>
+          )}
         </button>
       </div>
     </form>

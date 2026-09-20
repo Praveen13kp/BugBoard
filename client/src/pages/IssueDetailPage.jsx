@@ -1,5 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import {
+  Activity,
+  AlertTriangle,
+  ArrowLeftRight,
+  Bug,
+  CalendarClock,
+  Edit3,
+  FileText,
+  Flag,
+  FolderKanban,
+  MessageCirclePlus,
+  Send,
+  TrendingUp,
+  User,
+  UserCheck,
+  X,
+} from 'lucide-react';
 import { errorMessage } from '../api/error';
 import { apiListActivity } from '../api/activity';
 import { apiListComments, apiAddComment } from '../api/comments';
@@ -11,38 +28,36 @@ import { canAssignIssue, canTransitionIssue, canUpdateIssue } from '../utils/per
 import Badge from '../components/common/Badge';
 import EmptyState from '../components/common/EmptyState';
 import ErrorBox from '../components/common/ErrorBox';
-import Loading from '../components/common/Loading';
-import SuccessBox from '../components/common/SuccessBox';
+import { useToast } from '../components/common/Toast';
 
 function personName(person) {
   return person?.name ?? 'Unassigned';
 }
 
-function activityText(entry) {
-  const actor = entry.actor?.name || 'Someone';
-  const { field, oldValue, newValue } = entry;
-
-  if (entry.action === 'created') return `${actor} opened this issue.`;
-  if (field === 'status') return `${actor} moved status ${oldValue} → ${newValue}.`;
-  if (field === 'assignee') return `${actor} assigned this issue to ${newValue || 'no one'}.`;
-  if (field === 'severity') return `${actor} changed severity ${oldValue} → ${newValue}.`;
-  if (field === 'priority') return `${actor} changed priority ${oldValue} → ${newValue}.`;
-  if (field === 'title') return `${actor} renamed the title to "${newValue}".`;
-  if (field === 'description') return `${actor} updated the description.`;
-  return `${actor} ${entry.action}${field ? ` ${field}` : ''}.`;
+function activityMeta(entry) {
+  const map = {
+    created: { icon: Flag, text: 'Opened this issue.' },
+    status: { icon: ArrowLeftRight, text: `moved status to ${entry.newValue || '—'}.` },
+    assignee: { icon: UserCheck, text: `assigned this issue to ${entry.newValue || 'no one'}.` },
+    severity: { icon: AlertTriangle, text: `changed severity to ${entry.newValue || '—'}.` },
+    priority: { icon: TrendingUp, text: `changed priority to ${entry.newValue || '—'}.` },
+    title: { icon: FileText, text: `renamed the title to "${entry.newValue}".` },
+    description: { icon: FileText, text: 'updated the description.' },
+  };
+  return map[entry.field || entry.action] || { icon: Activity, text: `made a change to ${entry.field || 'this issue'}.` };
 }
 
 export default function IssueDetailPage() {
   const { issueId } = useParams();
   const { user } = useAuth();
+  const toast = useToast();
   const [issue, setIssue] = useState(null);
   const [project, setProject] = useState(null);
   const [comments, setComments] = useState([]);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [actionError, setActionError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [actionBusy, setActionBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -71,37 +86,42 @@ export default function IssueDetailPage() {
 
   function updateIssue(nextIssue) {
     setIssue(nextIssue);
-    setActionError('');
+  }
+
+  async function refreshActivity() {
+    setActivity((await apiListActivity(issueId)).activity);
   }
 
   async function handleStatusChange(nextStatus) {
-    setActionError('');
-    setSuccessMessage('');
+    setActionBusy(true);
     try {
       const result = await apiChangeStatus(issueId, nextStatus);
       updateIssue(result.issue);
-      setActivity((await apiListActivity(issueId)).activity);
-      setSuccessMessage('Status updated.');
+      await refreshActivity();
+      toast.success('Status updated', `The issue is now ${STATUS_LABELS[nextStatus] || nextStatus}.`);
     } catch (statusError) {
-      setActionError(errorMessage(statusError, 'Unable to change the status.'));
+      toast.error('Unable to change the status', errorMessage(statusError, 'Please try again.'));
+    } finally {
+      setActionBusy(false);
     }
   }
 
   async function handleAssigneeChange(nextAssignee) {
-    setActionError('');
-    setSuccessMessage('');
+    setActionBusy(true);
     try {
       const result = await apiChangeAssignee(issueId, nextAssignee || null);
       updateIssue(result.issue);
-      setActivity((await apiListActivity(issueId)).activity);
-      setSuccessMessage('Assignee updated.');
+      await refreshActivity();
+      toast.success('Assignee updated', nextAssignee ? 'The issue has been reassigned.' : 'The issue is unassigned.');
     } catch (assignError) {
-      setActionError(errorMessage(assignError, 'Unable to reassign the issue.'));
+      toast.error('Unable to reassign the issue', errorMessage(assignError, 'Please try again.'));
+    } finally {
+      setActionBusy(false);
     }
   }
 
-  if (error) return <ErrorBox message={error} onRetry={load} />;
-  if (loading || !issue) return <Loading text="Loading issue..." />;
+  if (error) return <div className="page"><ErrorBox message={error} onRetry={load} /></div>;
+  if (loading || !issue) return <IssueDetailSkeleton />;
 
   const canEdit = canUpdateIssue(user, issue);
   const canMove = canTransitionIssue(user, issue);
@@ -109,25 +129,29 @@ export default function IssueDetailPage() {
 
   return (
     <div className="page">
-      <section className="page-heading">
+      {/* Header */}
+      <section className="issue-header" aria-labelledby="issue-title">
         <p className="eyebrow">
+          <Bug size={15} aria-hidden="true" />
           {issue.project?.key}-{issue.id.slice(0, 6)}
         </p>
-        <h2>{issue.title}</h2>
+        <h2 id="issue-title">{issue.title}</h2>
         <div className="badge-row">
           <Badge kind="status" value={issue.status} />
           <Badge kind="severity" value={issue.severity} />
           <Badge kind="priority" value={issue.priority} />
         </div>
-        <p className="muted">
-          Reported by {personName(issue.reporter)} · created {formatDate(issue.createdAt)} · updated{' '}
-          {formatDate(issue.updatedAt)}
-        </p>
+        <div className="issue-header-meta">
+          <span>
+            <User size={14} aria-hidden="true" /> {personName(issue.reporter)}
+          </span>
+          <span>
+            <CalendarClock size={14} aria-hidden="true" /> Updated {formatDate(issue.updatedAt)}
+          </span>
+        </div>
       </section>
 
-      {actionError && <div className="alert alert--error">{actionError}</div>}
-      <SuccessBox message={successMessage} onDismiss={() => setSuccessMessage('')} />
-
+      {/* Detail grid */}
       <section className="panel detail-grid">
         <dl className="detail-list">
           <div className="detail-item">
@@ -154,15 +178,21 @@ export default function IssueDetailPage() {
               <Badge kind="priority" value={issue.priority} />
             </dd>
           </div>
+          <div className="detail-item">
+            <dt>Created</dt>
+            <dd>{formatDate(issue.createdAt)}</dd>
+          </div>
         </dl>
 
         <div className="detail-actions">
+          <p className="detail-actions-title">Take action</p>
           {canMove && (
             <label className="field">
               <span className="field-label">Move status</span>
               <select
                 className="input"
                 value={issue.status}
+                disabled={actionBusy}
                 onChange={(event) => handleStatusChange(event.target.value)}
               >
                 {[...issue.allowedStatusTransitions].map((status) => (
@@ -172,7 +202,7 @@ export default function IssueDetailPage() {
                 ))}
               </select>
               {issue.allowedStatusTransitions.length === 0 && (
-                <p className="muted">No further transitions are allowed.</p>
+                <p className="field-hint">No further transitions are allowed.</p>
               )}
             </label>
           )}
@@ -182,6 +212,7 @@ export default function IssueDetailPage() {
               <select
                 className="input"
                 value={issue.assignee?.id || ''}
+                disabled={actionBusy}
                 onChange={(event) => handleAssigneeChange(event.target.value)}
               >
                 <option value="">Unassigned</option>
@@ -198,45 +229,61 @@ export default function IssueDetailPage() {
             canEdit={canEdit}
             onSaved={({ issue: nextIssue }) => {
               updateIssue(nextIssue);
-              setSuccessMessage('Issue details updated.');
+              toast.success('Issue details updated', 'Title, description, and fields saved.');
             }}
           />
         </div>
       </section>
 
+      {/* Description */}
       <section className="section">
         <div className="section-heading">
           <h3>Description</h3>
         </div>
-        <p className="issue-description">{issue.description}</p>
+        <div className="panel description-panel">
+          <p className="issue-description">{issue.description}</p>
+        </div>
       </section>
 
       <IssueComments
         issueId={issueId}
         comments={comments}
         onAdd={(comment) => setComments((list) => [comment, ...list])}
+        onError={() => {}}
       />
 
+      {/* Activity */}
       <section className="section">
         <div className="section-heading">
-          <h3>Activity ({activity.length})</h3>
+          <h3>
+            <Activity size={18} aria-hidden="true" style={{ verticalAlign: -3, marginRight: 6 }} />
+            Activity ({activity.length})
+          </h3>
         </div>
         {activity.length === 0 ? (
-          <p className="muted">No activity recorded yet.</p>
+          <EmptyState title="No activity recorded yet" message="Important changes will appear here as a timeline." />
         ) : (
-          <ul className="activity-timeline">
-            {activity.map((entry) => (
-              <li key={entry.id} className="activity-item">
-                <div className="activity-avatar" aria-hidden="true">
-                  {(entry.actor?.name || '?').charAt(0).toUpperCase()}
-                </div>
-                <div className="activity-body">
-                  <p className="activity-text">{activityText(entry)}</p>
-                  <p className="muted">{formatDate(entry.timestamp)}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="panel" style={{ padding: 'var(--sp-4) var(--sp-6)' }}>
+            <ul className="activity-timeline">
+              {activity.map((entry) => {
+                const meta = activityMeta(entry);
+                const Icon = meta.icon;
+                return (
+                  <li key={entry.id} className="activity-item">
+                    <span className="activity-icon" aria-hidden="true">
+                      <Icon size={15} />
+                    </span>
+                    <div className="activity-body">
+                      <p className="activity-text">
+                        <strong>{entry.actor?.name || 'Someone'}</strong> {meta.text}
+                      </p>
+                      <p className="activity-time">{formatDate(entry.timestamp)}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         )}
       </section>
     </div>
@@ -275,16 +322,23 @@ function IssueEditForm({ issue, canEdit, onSaved }) {
   }
 
   if (!canEdit) return null;
+
   if (!editing) {
     return (
-      <button type="button" className="btn" onClick={() => setEditing(true)}>
-        Edit details
+      <button type="button" className="btn btn--secondary" onClick={() => setEditing(true)}>
+        <Edit3 size={15} aria-hidden="true" /> Edit details
       </button>
     );
   }
 
   return (
     <form className="issue-edit-form" onSubmit={handleSubmit}>
+      <div className="form-row" style={{ justifyContent: 'space-between' }}>
+        <strong>Edit issue</strong>
+        <button type="button" className="btn btn--icon btn--ghost" aria-label="Cancel editing" onClick={() => setEditing(false)}>
+          <X size={16} />
+        </button>
+      </div>
       {error && <div className="alert alert--error">{error}</div>}
       <label className="field">
         <span className="field-label">Title</span>
@@ -323,12 +377,18 @@ function IssueEditForm({ issue, canEdit, onSaved }) {
           </select>
         </label>
       </div>
-      <div className="form-row">
-        <button type="submit" className="btn btn--primary" disabled={submitting}>
-          {submitting ? 'Saving...' : 'Save changes'}
-        </button>
-        <button type="button" className="btn" onClick={() => setEditing(false)}>
+      <div className="form-actions">
+        <button type="button" className="btn btn--ghost" onClick={() => setEditing(false)}>
           Cancel
+        </button>
+        <button type="submit" className="btn btn--primary" disabled={submitting}>
+          {submitting ? (
+            <>
+              <span className="btn-spinner" aria-hidden="true" /> Saving...
+            </>
+          ) : (
+            'Save changes'
+          )}
         </button>
       </div>
     </form>
@@ -358,35 +418,48 @@ function IssueComments({ issueId, comments, onAdd }) {
   return (
     <section className="section">
       <div className="section-heading">
-        <h3>Comments ({comments.length})</h3>
+        <h3>
+          <MessageCirclePlus size={18} aria-hidden="true" style={{ verticalAlign: -3, marginRight: 6 }} />
+          Comments ({comments.length})
+        </h3>
       </div>
 
       {error && <div className="alert alert--error">{error}</div>}
 
       <form className="panel comment-form" onSubmit={handleSubmit}>
-        <textarea
-          className="input"
-          required
-          minLength={1}
-          rows={2}
-          value={content}
-          onChange={(event) => setContent(event.target.value)}
-          placeholder="Add a comment..."
-        />
-        <button type="submit" className="btn btn--primary" disabled={submitting || !content.trim()}>
-          {submitting ? 'Posting...' : 'Post comment'}
-        </button>
+        <div className="comment-form-row">
+          <label className="sr-only" htmlFor="comment-field">
+            Add a comment
+          </label>
+          <textarea
+            id="comment-field"
+            className="input"
+            required
+            minLength={1}
+            rows={2}
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+            placeholder="Add a comment..."
+          />
+          <button type="submit" className="btn btn--primary" disabled={submitting || !content.trim()} aria-label="Post comment">
+            {submitting ? (
+              <span className="btn-spinner" aria-hidden="true" />
+            ) : (
+              <Send size={16} aria-hidden="true" />
+            )}
+          </button>
+        </div>
       </form>
 
       {comments.length === 0 ? (
-        <EmptyState title="No comments yet" message="Be the first to comment on this issue." />
+        <EmptyState title="No comments yet" message="Be the first to add context to this issue." />
       ) : (
         <ul className="comment-list">
           {comments.map((comment) => (
             <li key={comment.id} className="comment-item">
-              <div className="avatar" aria-hidden="true">
+              <span className="avatar" aria-hidden="true">
                 {(comment.author?.name || '?').charAt(0).toUpperCase()}
-              </div>
+              </span>
               <div className="comment-body">
                 <div className="comment-meta">
                   <strong>{comment.author?.name || 'Unknown'}</strong>
@@ -399,5 +472,25 @@ function IssueComments({ issueId, comments, onAdd }) {
         </ul>
       )}
     </section>
+  );
+}
+
+function IssueDetailSkeleton() {
+  return (
+    <div className="page" aria-hidden="true" aria-label="Loading issue">
+      <div className="skeleton-card" style={{ padding: 'var(--sp-8)' }}>
+        <span className="skeleton skeleton-line" style={{ width: '30%' }} />
+        <span className="skeleton skeleton-line" style={{ width: '62%', height: 28 }} />
+        <span className="skeleton skeleton-badge" />
+      </div>
+      <div className="skeleton-card" style={{ minHeight: 220 }}>
+        <span className="skeleton skeleton-block" />
+        <span className="skeleton skeleton-block" />
+      </div>
+      <div className="skeleton-card" style={{ minHeight: 160 }}>
+        <span className="skeleton skeleton-line" style={{ width: '40%' }} />
+        <span className="skeleton skeleton-line" style={{ width: '80%' }} />
+      </div>
+    </div>
   );
 }

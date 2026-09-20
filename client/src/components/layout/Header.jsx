@@ -1,7 +1,10 @@
-import { useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Menu, Plus } from 'lucide-react';
+import { canReportIssueForProject } from '../../utils/permissions';
+import { useAuth } from '../../context/AuthContext';
 
 const TITLES = {
-  '/': 'Dashboard',
   '/dashboard': 'Dashboard',
   '/issues': 'Issues',
   '/projects': 'Projects',
@@ -15,11 +18,26 @@ function titleFor(pathname) {
   return 'BugBoard';
 }
 
-export default function Header() {
+export default function Header({ onMenu, canReport }) {
   const location = useLocation();
   return (
-    <header className="header">
-      <h1 className="header-title">{titleFor(location.pathname)}</h1>
+    <header className="topbar">
+      <button type="button" className="menu-toggle" aria-label="Open navigation" onClick={onMenu}>
+        <Menu size={19} />
+      </button>
+      <div>
+        <p className="topbar-crumb">BugBoard</p>
+        <h1 className="topbar-title">{titleFor(location.pathname)}</h1>
+      </div>
+      <span className="topbar-spacer" />
+      <div className="topbar-actions">
+        {canReport && (
+          <Link to="/create-issue" className="btn btn--primary btn--small">
+            <Plus size={16} aria-hidden="true" />
+            <span>New issue</span>
+          </Link>
+        )}
+      </div>
     </header>
   );
 }

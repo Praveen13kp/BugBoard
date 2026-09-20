@@ -1,13 +1,23 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ClipboardCheck, CircleDot, Loader, RotateCcw, Search, FlaskConical, Inbox, AlertOctagon, ListChecks } from 'lucide-react';
 import { errorMessage } from '../api/error';
 import { apiGetStats } from '../api/dashboard';
 import { apiListIssues } from '../api/issues';
 import { useAuth } from '../context/AuthContext';
 import ErrorBox from '../components/common/ErrorBox';
 import IssueRow from '../components/issues/IssueRow';
-import Loading from '../components/common/Loading';
 import StatCard from '../components/common/StatCard';
+import EmptyState from '../components/common/EmptyState';
+
+const STAT_DEFS = [
+  { key: 'total', label: 'Total issues', tone: 'total', icon: ListChecks, href: '/issues' },
+  { key: 'open', label: 'Open', tone: 'open', icon: CircleDot, href: '/issues?status=OPEN' },
+  { key: 'inProgress', label: 'In progress', tone: 'progress', icon: Loader, href: '/issues?status=IN_PROGRESS' },
+  { key: 'testing', label: 'Testing', tone: 'testing', icon: FlaskConical, href: '/issues?status=TESTING' },
+  { key: 'resolved', label: 'Resolved', tone: 'resolved', icon: ClipboardCheck, href: '/issues?status=RESOLVED' },
+  { key: 'critical', label: 'Critical', tone: 'critical', icon: AlertOctagon, href: '/issues?severity=CRITICAL' },
+];
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -59,22 +69,26 @@ export default function DashboardPage() {
   return (
     <div className="page">
       <section className="page-heading">
-        <h2>Welcome back, {user.name}</h2>
-        <p className="muted">Here is what is happening across your projects.</p>
+        <h2>Welcome back, {user.name.split(' ')[0]}</h2>
+        <p>Here is what is happening across your projects.</p>
       </section>
 
       {error ? (
         <ErrorBox message={error} onRetry={load} />
       ) : loading || !stats ? (
-        <Loading text="Loading dashboard..." />
+        <StatsSkeleton />
       ) : (
         <section className="stats-grid" aria-label="Issue statistics">
-          <StatCard label="Total issues" value={stats.total} to="/issues" />
-          <StatCard label="Open" value={stats.open} to="/issues?status=OPEN" tone="open" />
-          <StatCard label="In progress" value={stats.inProgress} to="/issues?status=IN_PROGRESS" tone="progress" />
-          <StatCard label="Testing" value={stats.testing} to="/issues?status=TESTING" tone="testing" />
-          <StatCard label="Resolved" value={stats.resolved} to="/issues?status=RESOLVED" tone="resolved" />
-          <StatCard label="Critical" value={stats.critical} to="/issues?severity=CRITICAL" tone="critical" />
+          {STAT_DEFS.map((def) => (
+            <StatCard
+              key={def.key}
+              label={def.label}
+              value={stats[def.key]}
+              to={def.href}
+              tone={def.tone}
+              icon={def.icon}
+            />
+          ))}
         </section>
       )}
 
@@ -86,11 +100,19 @@ export default function DashboardPage() {
           </Link>
         </div>
         {myIssuesLoading ? (
-          <Loading text="Loading your issues..." />
+          <AssignedSkeleton />
         ) : myIssuesError ? (
           <ErrorBox title="Unable to load assigned issues" message={myIssuesError} onRetry={loadMyIssues} />
         ) : myIssues.length === 0 ? (
-          <p className="muted">No issues are assigned to you right now.</p>
+          <EmptyState
+            title="Nothing assigned to you right now"
+            message="When issues are assigned to you, they will appear here so you can pick them up quickly."
+            icon={Inbox}
+          >
+            <Link to="/issues" className="btn btn--secondary">
+              <Search size={16} aria-hidden="true" /> Browse all issues
+            </Link>
+          </EmptyState>
         ) : (
           <div className="issue-list">
             {myIssues.map((issue) => (
@@ -99,6 +121,37 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function StatsSkeleton() {
+  return (
+    <div className="stats-grid" aria-hidden="true" aria-label="Loading statistics">
+      {[0, 1, 2, 3, 4, 5].map((item) => (
+        <div className="skeleton-card" key={item}>
+          <span className="skeleton skeleton-avatar" style={{ width: 42, height: 42, borderRadius: 12 }} />
+          <span className="skeleton skeleton-line" style={{ width: '60%', height: 28 }} />
+          <span className="skeleton skeleton-line" style={{ width: '45%' }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AssignedSkeleton() {
+  return (
+    <div className="issue-list" aria-hidden="true" aria-label="Loading assigned issues">
+      {[0, 1, 2].map((item) => (
+        <div className="skeleton-row" key={item}>
+          <div className="skeleton-column">
+            <span className="skeleton skeleton-line" style={{ width: '50%' }} />
+            <span className="skeleton skeleton-line" style={{ width: '68%' }} />
+          </div>
+          <span className="skeleton skeleton-badge" />
+          <span className="skeleton skeleton-avatar" />
+        </div>
+      ))}
     </div>
   );
 }

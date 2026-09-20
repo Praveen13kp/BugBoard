@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Kanban, LayoutList, Plus, RefreshCw } from 'lucide-react';
 import { errorMessage } from '../api/error';
 import { apiChangeStatus, apiListIssues } from '../api/issues';
 import { apiListProjects } from '../api/projects';
@@ -12,7 +13,7 @@ import ErrorBox from '../components/common/ErrorBox';
 import FilterBar from '../components/issues/FilterBar';
 import IssueRow from '../components/issues/IssueRow';
 import KanbanBoard from '../components/issues/KanbanBoard';
-import Loading from '../components/common/Loading';
+import { useToast } from '../components/common/Toast';
 
 const FILTER_KEYS = ['search', 'project', 'status', 'priority', 'severity', 'reporter', 'assignee'];
 const PAGE_SIZE = 20;
@@ -28,6 +29,7 @@ function filtersFromParams(params) {
 
 export default function IssuesPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState(() => filtersFromParams(searchParams));
   const [page, setPage] = useState(() => Number(searchParams.get('page')) || 1);
@@ -41,7 +43,6 @@ export default function IssuesPage() {
   const [users, setUsers] = useState([]);
   const [canReport, setCanReport] = useState(false);
   const [movingId, setMovingId] = useState(null);
-  const [moveError, setMoveError] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -86,7 +87,6 @@ export default function IssuesPage() {
     let active = true;
     setLoading(true);
     setError('');
-    setMoveError('');
 
     const request =
       viewMode === 'list'
@@ -136,13 +136,13 @@ export default function IssuesPage() {
 
   async function handleMove(issue, nextStatus) {
     if (!nextStatus) return;
-    setMoveError('');
     setMovingId(issue.id);
     try {
       const { issue: updated } = await apiChangeStatus(issue.id, nextStatus);
       setIssues((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      toast.success('Issue moved', `"${issue.title}" is now in ${updated.status.replaceAll('_', ' ').toLowerCase()}.`);
     } catch (moveFailure) {
-      setMoveError(errorMessage(moveFailure, 'Unable to move the issue.'));
+      toast.error('Unable to move the issue', errorMessage(moveFailure, 'Please try again.'));
     } finally {
       setMovingId(null);
     }
@@ -153,11 +153,11 @@ export default function IssuesPage() {
       <section className="page-heading page-heading--row">
         <div>
           <h2>Issues</h2>
-          <p className="muted">Search and filter across the issues you can access.</p>
+          <p>Search and filter across the issues you can access.</p>
         </div>
         {canReport && (
           <Link to="/create-issue" className="btn btn--primary">
-            New issue
+            <Plus size={17} aria-hidden="true" /> New issue
           </Link>
         )}
       </section>
@@ -170,28 +170,22 @@ export default function IssuesPage() {
             type="button"
             className={viewMode === 'list' ? 'is-active' : ''}
             aria-pressed={viewMode === 'list'}
-            onClick={() => {
-              setViewMode('list');
-              setMoveError('');
-            }}
+            onClick={() => setViewMode('list')}
           >
-            List view
+            <LayoutList size={15} aria-hidden="true" /> List
           </button>
           <button
             type="button"
             className={viewMode === 'kanban' ? 'is-active' : ''}
             aria-pressed={viewMode === 'kanban'}
-            onClick={() => {
-              setViewMode('kanban');
-              setMoveError('');
-            }}
+            onClick={() => setViewMode('kanban')}
           >
-            Kanban view
+            <Kanban size={15} aria-hidden="true" /> Kanban
           </button>
         </div>
         {viewMode === 'list' && (
           <select
-            className="input"
+            className="input toolbar-sort"
             value={sort}
             onChange={(event) => handleSortChange(event.target.value)}
             aria-label="Sort issues"
@@ -204,34 +198,34 @@ export default function IssuesPage() {
           </select>
         )}
         {viewMode === 'list' && pagination?.total !== undefined && (
-          <span className="issue-toolbar-total muted">Showing {issues.length} of {pagination.total}</span>
+          <span className="issue-toolbar-total muted">
+            Showing {issues.length} of {pagination.total}
+          </span>
         )}
       </div>
 
       {error ? (
         <ErrorBox message={error} onRetry={() => setRefreshKey((key) => key + 1)} />
       ) : loading ? (
-        <Loading text="Loading issues..." />
+        viewMode === 'list' ? (
+          <IssuesListSkeleton count={4} />
+        ) : (
+          <KanbanSkeleton />
+        )
       ) : issues.length === 0 ? (
-        <>
-          {moveError && <ErrorBox title="Unable to move the issue" message={moveError} />}
-          <EmptyState
-            title="No issues found"
-            message="Try changing your filters, or create a new issue."
-            children={
-              canReport ? (
-                <Link to="/create-issue" className="btn btn--primary">
-                  Create issue
-                </Link>
-              ) : undefined
-            }
-          />
-        </>
+        <EmptyState
+          title="No issues found"
+          message="Try changing your filters, or create a new issue to get started."
+          children={
+            canReport ? (
+              <Link to="/create-issue" className="btn btn--primary">
+                <Plus size={16} aria-hidden="true" /> Create issue
+              </Link>
+            ) : undefined
+          }
+        />
       ) : viewMode === 'kanban' ? (
-        <>
-          {moveError && <ErrorBox title="Unable to move the issue" message={moveError} />}
-          <KanbanBoard issues={issues} onMove={handleMove} movingId={movingId} />
-        </>
+        <KanbanBoard issues={issues} onMove={handleMove} movingId={movingId} />
       ) : (
         <div className="issue-list">
           {issues.map((issue) => (
@@ -244,7 +238,7 @@ export default function IssuesPage() {
         <nav className="pagination" aria-label="Issues pagination">
           <button
             type="button"
-            className="btn"
+            className="btn btn--secondary"
             disabled={page <= 1}
             onClick={() => setPage((current) => Math.max(1, current - 1))}
           >
@@ -255,7 +249,7 @@ export default function IssuesPage() {
           </span>
           <button
             type="button"
-            className="btn"
+            className="btn btn--secondary"
             disabled={page >= pagination.totalPages}
             onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
           >
@@ -264,5 +258,45 @@ export default function IssuesPage() {
         </nav>
       )}
     </div>
+  );
+}
+
+export function IssuesListSkeleton({ count = 4 }) {
+  return (
+    <div className="issue-list" aria-hidden="true" aria-label="Loading issues">
+      {Array.from({ length: count }, (_, index) => (
+        <div className="skeleton-row" key={index}>
+          <div className="skeleton-column">
+            <span className="skeleton skeleton-line" style={{ width: '55%' }} />
+            <span className="skeleton skeleton-line" style={{ width: '72%' }} />
+          </div>
+          <span className="skeleton skeleton-badge" />
+          <span className="skeleton skeleton-badge" />
+          <span className="skeleton skeleton-avatar" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function KanbanSkeleton() {
+  return (
+    <div className="kanban" aria-hidden="true" aria-label="Loading board">
+      {[0, 1, 2, 3, 4].map((column) => (
+        <div className="skeleton-card" key={column} style={{ minHeight: 260 }}>
+          <span className="skeleton skeleton-line" style={{ width: '50%' }} />
+          <span className="skeleton skeleton-line" style={{ width: '80%' }} />
+          <span className="skeleton skeleton-line" style={{ width: '70%' }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function RetryButton({ onRetry }) {
+  return (
+    <button type="button" className="btn btn--secondary" onClick={onRetry}>
+      <RefreshCw size={15} aria-hidden="true" /> Try again
+    </button>
   );
 }
