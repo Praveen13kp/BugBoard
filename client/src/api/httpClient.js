@@ -17,7 +17,8 @@ httpClient.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('bugboard_token');
       localStorage.removeItem('bugboard_user');
-      if (window.location.pathname !== '/login') window.location.assign('/login');
+      const { pathname } = window.location;
+      if (pathname !== '/login' && pathname !== '/') window.location.assign('/login');
     }
     return Promise.reject(error);
   },
